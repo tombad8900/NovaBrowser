@@ -7,7 +7,10 @@ import java.util.concurrent.TimeUnit
 /** Re-evaluate destination on every network hop, including redirects and subtitle/segment loads. */
 object ScopedMediaHttp {
     fun factory(contexts: List<RequestContext>, active: RequestContext? = null): OkHttpDataSource.Factory {
-        val client = OkHttpClient.Builder().connectTimeout(15,TimeUnit.SECONDS).readTimeout(30,TimeUnit.SECONDS)
+        return OkHttpDataSource.Factory(client(contexts,active))
+    }
+    internal fun client(contexts:List<RequestContext>,active:RequestContext?=null):OkHttpClient {
+        return OkHttpClient.Builder().connectTimeout(15,TimeUnit.SECONDS).readTimeout(30,TimeUnit.SECONDS)
             .followSslRedirects(false)
             .addNetworkInterceptor { chain ->
                 val target = chain.request().url.toString()
@@ -26,6 +29,5 @@ object ScopedMediaHttp {
                 }
                 response
             }.build()
-        return OkHttpDataSource.Factory(client)
     }
 }

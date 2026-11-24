@@ -34,3 +34,11 @@ Credentials stay in memory, excluded from URLs shown to the user, logs, saved hi
 
 ## Ad filtering route
 Nova requests the unmodified Mozilla-signed uBlock Origin 1.77.0 package from its AMO download URL using GeckoView's normal signature-checked install API. It is not bundled, relicensed or copied into Nova. On failure the UI must show unavailable, not pretend filtering is on. Installation, startup, per-site popup controls and breakage need emulator verification. uBlock's own per-site switch is separate from Gecko tracking protection. Package source: https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/ ; upstream source: https://github.com/gorhill/uBlock ; API design: https://firefox-source-docs.mozilla.org/mobile/android/geckoview/design/managing-extensions.html . The current GeckoView AAR public API was inspected directly rather than relying on the older design page's method names.
+
+## Crash regression, Nov 24 14:09 report
+User saw an unopened-session assertion while simply opening a website. The matching GeckoSession 160 assertion is inside onNewSession result handling, before Gecko opens the returned session. Nova's callback posted newTab, which called open itself. Removed that open for callback-provided sessions. This is a source-confirmed race matching the assertion, not proof of the user's exact unseen website trigger. Regression test opens a page that tries a non-gesture popup, then taps a target=_blank link and checks the app remains alive. Phone verification still required.
+
+## Verified evidence so far
+- CI runs 45379664933 / 45379881704: unit tests + ARM64/x64 debug APK compile passed, before latest refinements.
+- Emulator 45380565457: actual protected MP4+subtitle displayed. Fixture requires Cookie and Referer. No fatal crash in captured log. Initial source/subtitle panel automation did not actually open panels, corrected test now asserts labels.
+- Local Nov24 14:12: eight tests pass (classifier, request scope/expiry, signed query preservation, path boundary rejection, real HTTP exact-source cookies, active-source segment fallback, redirect isolation, HTML rejection). Native torrent local test skipped unless native CI setup is present.

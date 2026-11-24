@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity() {
         var desktop = false
         var generation = 0L
         var loadStarted = 0L
+        var media:MediaSession?=null
         var canBack = false
         var canFwd = false
     }
@@ -253,6 +254,10 @@ class MainActivity : AppCompatActivity() {
         }
         val s = session ?: GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).useTrackingProtection(true).build())
         val tab = Tab(s)
+        s.mediaSessionDelegate=object:MediaSession.Delegate {
+            override fun onActivated(session:GeckoSession,mediaSession:MediaSession){tab.media=mediaSession}
+            override fun onDeactivated(session:GeckoSession,mediaSession:MediaSession){tab.media=null}
+        }
         s.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onPageStart(session: GeckoSession, u: String) {
                 tab.loadStarted = android.os.SystemClock.elapsedRealtime()
@@ -324,7 +329,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
         s.promptDelegate = Prompts(this)
-        if (!s.isOpen) s.open(Engine.get(this))
+        // Gecko owns opening sessions returned by onNewSession. Never race it by opening here.
+        if (session == null && !s.isOpen) s.open(Engine.get(this))
         AdBlock.attach(s) { popup ->
             val dialog=android.app.Dialog(this)
             val view=GeckoView(this)
@@ -414,6 +420,7 @@ class MainActivity : AppCompatActivity() {
         val ps = PlaybackSession(title=t.title.ifBlank { "Nova" }, pageUrl=t.url,
             sources=all.filter { it.kind != "SUB" && it.kind != "TORRENT" },
             subtitles=all.filter { it.kind == "SUB" }, contexts=t.contexts.values.toList())
+        t.media?.pause()
         startActivity(Intent(this, PlayerActivity::class.java).putExtra("playbackSession",PlaybackSessions.put(ps)))
     }
 
