@@ -61,6 +61,21 @@ class MainActivity : AppCompatActivity() {
     private val ui = Handler(Looper.getMainLooper())
     private lateinit var geckoView: GeckoView
     private var inFullscreen = false
+    private var loadingStarted = 0L
+    private fun tr(en: String, ar: String) = if (resources.configuration.locales[0].language == "ar") ar else en
+    private fun protection(t: Tab) {
+        val host = Uri.parse(t.url).host ?: return
+        sheet { l, d ->
+            title(l, tr("Site protection", "حماية الموقع"))
+            item(l, host, null, {})
+            item(l, if(store.protection(host)) tr("Protection is on", "الحماية مفعلة") else tr("Protection is off for this site", "الحماية متوقفة لهذا الموقع"),
+                tr("Tap to change and reload. Some sites need exceptions.", "اضغط للتغيير وإعادة التحميل. بعض المواقع تحتاج استثناءً."), {
+                    d.dismiss(); t.session.settings.useTrackingProtection=store.toggleProtection(host);t.session.reload()
+                })
+            item(l, tr("Tracker protection, isolated cookies and GPC", "حماية التتبع وعزل ملفات الارتباط وإشارة الخصوصية"),
+                tr("Full ad filtering is being verified, not promised.", "الحجب الكامل للإعلانات قيد التحقق وليس مضموناً."), {})
+        }
+    }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
@@ -118,7 +133,7 @@ class MainActivity : AppCompatActivity() {
         holder.addView(geckoView, FrameLayout.LayoutParams(-1, -1))
 
         urlBar = EditText(this).apply {
-            hint = "Search or enter address"; setHintTextColor(dim); setTextColor(textColor); textSize = 15f
+            hint = tr("Search or enter address", "ابحث أو أدخل عنواناً"); setHintTextColor(dim); setTextColor(textColor); textSize = 15f
             setSingleLine(); background = rounded(surface, 22)
             setPadding(dp(16), 0, dp(16), 0)
             imeOptions = EditorInfo.IME_ACTION_GO
@@ -135,14 +150,19 @@ class MainActivity : AppCompatActivity() {
         }
         barWrap.addView(urlBar)
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        snifBtn = btn("◉ 0") { showSniffer() }
+        snifBtn = btn("▷") { showSniffer() }
         tabBtn = btn("1") { showTabs() }
         row.addView(btn("‹") { cur?.let { if (it.canBack) it.session.goBack() } })
         row.addView(btn("›") { cur?.let { if (it.canFwd) it.session.goForward() } })
         row.addView(btn("⟳") { cur?.session?.reload() })
-        row.addView(snifBtn)
+        row.addView(btn("◇") { cur?.let{protection(it)} })
         row.addView(tabBtn)
         row.addView(btn("⋮") { showMenu() })
+        val playLabel=TextView(this).apply {
+            text=tr("Play in Nova", "تشغيل في نوفا");setTextColor(accent);textSize=14f;gravity=Gravity.CENTER
+            setPadding(0,dp(10),0,dp(10));setOnClickListener{showSniffer()}
+        }
+        barWrap.addView(playLabel)
         barWrap.addView(row)
 
         col.addView(progress); col.addView(holder); col.addView(barWrap)
@@ -216,15 +236,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun newTab(url: String?, switchTo: Boolean = true, session: GeckoSession? = null): Tab {
+        if (tabs.size >= 8) {
+            val victim = tabs.firstOrNull { it !== cur } ?: tabs.first()
+            closeTab(victim)
+        }
         val s = session ?: GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).useTrackingProtection(true).build())
         val tab = Tab(s)
         s.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onPageStart(session: GeckoSession, u: String) {
+                loadingStarted = android.os.SystemClock.elapsedRealtime()
                 tab.found.clear(); tab.resources.clear(); tab.contexts.clear(); tab.url = u
                 if (cur === tab) { refreshCounts(); if (!urlBar.hasFocus()) urlBar.setText(shown(u)) }
             }
             override fun onPageStop(session: GeckoSession, success: Boolean) {
-                if (tab.url.startsWith("http")) store.addHistory(tab.title, tab.url)
+                android.util.Log.i("NovaPerf", "Page stop success=$success elapsedMs=${android.os.SystemClock.elapsedRealtime()-loadingStarted} tabs=${tabs.size} captures=${tab.found.size}")
+                if (success && tab.url.startsWith("http")) store.addHistory(tab.title, tab.url)
+                if (!success && cur === tab) Toast.makeText(this@MainActivity,tr("Page couldn't finish loading. Reload or check site protection.","تعذر إكمال تحميل الصفحة. أعد التحميل أو راجع حماية الموقع."),Toast.LENGTH_LONG).show()
             }
             override fun onProgressChange(session: GeckoSession, p: Int) {
                 if (cur === tab) { progress.visibility = if (p in 1..99) View.VISIBLE else View.INVISIBLE; progress.progress = p }
@@ -233,6 +260,7 @@ class MainActivity : AppCompatActivity() {
         s.navigationDelegate = object : GeckoSession.NavigationDelegate {
             override fun onLocationChange(session: GeckoSession, u: String?, perms: MutableList<GeckoSession.PermissionDelegate.ContentPermission>, hasUserGesture: Boolean) {
                 tab.url = u ?: ""
+                Uri.parse(tab.url).host?.let { host -> session.settings.useTrackingProtection=store.protection(host) }
                 if (cur === tab && !urlBar.hasFocus()) urlBar.setText(shown(tab.url))
             }
             override fun onCanGoBack(session: GeckoSession, v: Boolean) { tab.canBack = v }
@@ -247,6 +275,10 @@ class MainActivity : AppCompatActivity() {
                     ui.post { try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u))) } catch (_: Exception) {} }
                 }
                 return GeckoResult.deny()
+            }
+            override fun onLoadError(session: GeckoSession, uri: String?, error: WebRequestError): GeckoResult<String>? {
+                val html = "<html><meta name='viewport' content='width=device-width,initial-scale=1'><body style='font:18px sans-serif;background:#15141d;color:#eee;padding:36px'><h2>"+tr("Page unavailable","تعذر فتح الصفحة")+"</h2><p>"+tr("Check your connection or reload. Site protection can be adjusted from the shield button.","راجع الاتصال أو أعد التحميل. يمكنك تغيير حماية الموقع من زر الدرع.")+"</p></body></html>"
+                return GeckoResult.fromValue("data:text/html;charset=utf-8;base64,"+android.util.Base64.encodeToString(html.toByteArray(Charsets.UTF_8),android.util.Base64.NO_WRAP))
             }
             override fun onNewSession(session: GeckoSession, uri: String): GeckoResult<GeckoSession>? {
                 val ns = GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).useTrackingProtection(true).build())
@@ -288,8 +320,10 @@ class MainActivity : AppCompatActivity() {
     private fun shown(u: String) = if (u.startsWith("data:") || u.startsWith("about:") || u.contains("nova.home")) "" else u
 
     private fun switchTo(t: Tab) {
+        cur?.session?.setActive(false)
         geckoView.releaseSession()
         geckoView.setSession(t.session)
+        t.session.setActive(true)
         cur = t
         urlBar.setText(shown(t.url))
         refreshCounts()
@@ -389,7 +423,8 @@ class MainActivity : AppCompatActivity() {
                 t.session.settings.viewportMode = if (t.desktop) GeckoSessionSettings.VIEWPORT_MODE_DESKTOP else GeckoSessionSettings.VIEWPORT_MODE_MOBILE
                 t.session.reload()
             })
-            item(l, "Tracking protection: strict (ads, trackers, fingerprinting, crypto-miners)", "Gecko Enhanced Tracking Protection + Global Privacy Control. Per-site exceptions are not built yet.", {})
+            item(l, tr("Site protection", "حماية الموقع"), tr("Tracking, permissions and compatibility", "التتبع والأذونات والتوافق"), { d.dismiss(); protection(t) })
+            item(l, tr("Settings", "الإعدادات"), null, { d.dismiss(); showSettings() })
             item(l, "Play a magnet link / torrent URL", null, { d.dismiss(); askMagnet() })
             item(l, "Share page", null, {
                 d.dismiss(); startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, t.url), "Share"))
@@ -417,18 +452,29 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun homeHtml(): String {
-        val bms = store.bookmarks().take(12).joinToString("") {
-            "<a class='c' href='${it.url.replace("'", "%27")}'>${android.text.Html.escapeHtml(it.title.take(24))}</a>"
+    private fun showSettings() {
+        sheet { l,d ->
+            title(l,tr("Settings", "الإعدادات"))
+            title(l,tr("Privacy & protection", "الخصوصية والحماية"))
+            item(l,tr("Site protection", "حماية الموقع"),tr("Change protection for the current site", "تغيير حماية الموقع الحالي"),{d.dismiss();cur?.let{protection(it)}})
+            item(l,tr("Clear browsing data", "مسح بيانات التصفح"),tr("History, cookies and site storage", "السجل وملفات الارتباط وتخزين المواقع"),{
+                AlertDialog.Builder(this).setTitle(tr("Clear browsing data?", "مسح بيانات التصفح؟")).setNegativeButton(tr("Cancel", "إلغاء"),null).setPositiveButton(tr("Clear", "مسح")){_,_->store.clearHistory();Engine.get(this).storageController.clearData(StorageController.ClearFlags.ALL);d.dismiss()}.show()
+            })
+            title(l,tr("Browser", "المتصفح"))
+            item(l,tr("Search", "البحث"),"DuckDuckGo",{})
+            item(l,tr("Language", "اللغة"),tr("Follows device language", "تتبع لغة الجهاز"),{})
+            item(l,tr("Playback", "التشغيل"),tr("Sources, subtitles, quality and audio inside player", "المصادر والترجمات والجودة والصوت داخل المشغل"),{})
+            title(l,tr("About Nova", "عن نوفا"))
+            item(l,"Nova · 0.3 development",tr("In development. Not a finished browser.", "قيد التطوير. ليس متصفحاً مكتملاً بعد."),{})
         }
-        return """<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'>
-        <style>body{margin:0;background:#0F1115;color:#E8EAF0;font-family:sans-serif;text-align:center;padding:12vh 20px}
-        h1{font-size:44px;letter-spacing:2px;margin:0 0 4px;color:#8B7BFF}p{color:#8A90A0;margin:0 0 28px}
-        form{max-width:520px;margin:auto}input{width:100%;box-sizing:border-box;padding:14px 18px;border-radius:26px;border:0;background:#1A1D24;color:#E8EAF0;font-size:16px}
-        .g{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:28px}.c{background:#1A1D24;color:#E8EAF0;text-decoration:none;padding:12px 16px;border-radius:14px;font-size:13px}</style></head>
-        <body><h1>NOVA</h1><p>Browser + built-in player</p>
-        <form action='https://duckduckgo.com/' method='get'><input name='q' placeholder='Search the web' autocomplete='off'></form>
-        <div class='g'>$bms</div></body></html>"""
+    }
+
+    private fun homeHtml(): String {
+        val title=tr("A quieter way to watch", "تصفّح بهدوء. شاهد بطريقتك")
+        val hint=tr("Search the web or enter a site", "ابحث أو أدخل عنوان موقع")
+        return """<!doctype html><html lang='${if(resources.configuration.locales[0].language=="ar")"ar" else "en"}' dir='auto'><meta name='viewport' content='width=device-width,initial-scale=1'><style>
+        *{box-sizing:border-box}body{margin:0;background:#111018;color:#f3f1fa;font-family:sans-serif;padding:64px 24px}small{color:#b5a7ff;letter-spacing:5px;font-size:15px}h1{font-size:32px;line-height:1.3;margin:20px 0 32px;font-weight:600}input{width:100%;border:1px solid #37333f;border-radius:18px;background:#201e29;color:#f3f1fa;font-size:15px;padding:18px}p{color:#9b97aa;line-height:1.7;font-size:13px;margin-top:28px}.orb{width:44px;height:44px;border:2px solid #b5a7ff;border-radius:15px;transform:rotate(-12deg);margin-bottom:28px}</style>
+        <div class='orb'></div><small>NOVA</small><h1>$title</h1><form action='https://duckduckgo.com/'><input name='q' placeholder='$hint'></form><p>${tr("Your browser and player, connected. Open a video, then use Play in Nova.", "المتصفح والمشغل في تجربة واحدة. افتح فيديو ثم اختر التشغيل في نوفا.")}</p></html>"""
     }
 
     private fun openPlayer(url: String, subs: List<String>, referer: String, tab: Tab? = null) {

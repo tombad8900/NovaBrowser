@@ -5,6 +5,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class Store(ctx: Context) {
+    private val historyWorker = java.util.concurrent.Executors.newSingleThreadExecutor()
     private val p = ctx.getSharedPreferences("nova", Context.MODE_PRIVATE)
 
     data class Entry(val title: String, val url: String)
@@ -37,13 +38,21 @@ class Store(ctx: Context) {
     fun isBookmarked(url: String) = bookmarks().any { it.url == url }
 
     fun addHistory(title: String, url: String) {
+        historyWorker.execute {
         val l = history()
         l.removeAll { it.url == url }
         l.add(0, Entry(title.ifBlank { url }, url))
         write("hist", l.take(500))
+        }
     }
 
-    fun clearHistory() = write("hist", emptyList())
+    fun clearHistory() { historyWorker.execute { write("hist", emptyList()) } }
+    fun protection(host: String) = !p.getStringSet("protectionOff", emptySet())!!.contains(host.lowercase())
+    fun toggleProtection(host: String): Boolean {
+        val set = p.getStringSet("protectionOff", emptySet())!!.toMutableSet()
+        val on = set.remove(host.lowercase()); if (!on) set.add(host.lowercase())
+        p.edit().putStringSet("protectionOff", set).apply(); return on
+    }
 
     var adblock: Boolean
         get() = p.getBoolean("adblock", true)
