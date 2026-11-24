@@ -87,6 +87,7 @@ class PlayerActivity : AppCompatActivity() {
             positionSubtitles(v==View.VISIBLE)
         })
         setContentView(root)
+        positionSubtitles(true)
         sourceIndex=savedInstanceState?.getInt("source")?:0
         play(sourceIndex,savedInstanceState?.getLong("position")?:0)
     }
@@ -173,6 +174,7 @@ class PlayerActivity : AppCompatActivity() {
     private fun more() {sheet(tr("Playback controls","أدوات التشغيل"),listOf(
         tr("Speed · ${speed}x","السرعة · ${speed}x") to {sheet(tr("Speed","السرعة"),listOf(.5f,.75f,1f,1.25f,1.5f,2f).map{v->"${v}x" to {speed=v;player?.setPlaybackSpeed(v)}})},
         tr("Aspect ratio","أبعاد الصورة") to {sheet(tr("Picture size","حجم الصورة"),listOf("Fit","Zoom","Fill").mapIndexed{i,l->l to {resize=i;pv.resizeMode=intArrayOf(AspectRatioFrameLayout.RESIZE_MODE_FIT,AspectRatioFrameLayout.RESIZE_MODE_ZOOM,AspectRatioFrameLayout.RESIZE_MODE_FILL)[i]}})},
+        tr("Back 10 seconds","رجوع 10 ثوانٍ") to {player?.seekBack()},tr("Forward 10 seconds","تقديم 10 ثوانٍ") to {player?.seekForward()},
         tr("Audio","الصوت") to {audio()},tr("Volume","مستوى الصوت") to {slider(false)},tr("Brightness","السطوع") to {slider(true)}))}
     private fun slider(bright:Boolean) {
         val audio=getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -212,7 +214,7 @@ class PlayerActivity : AppCompatActivity() {
         p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setPreferredTextLanguage("ar").build()
         pv.player=p;player=p;p.setMediaItem(item.build(),position);p.setPlaybackSpeed(speed);p.prepare();p.playWhenReady=true
     }
-    private fun positionSubtitles(controls:Boolean){pv.subtitleView?.apply{setPadding(0,0,0,if(controls)dp(130) else dp(16));setBottomPaddingFraction(.04f)}}
+    private fun positionSubtitles(controls:Boolean){pv.subtitleView?.apply{setFixedTextSize(android.util.TypedValue.COMPLEX_UNIT_SP,20f);setApplyEmbeddedFontSizes(false);setStyle(androidx.media3.ui.CaptionStyleCompat(android.graphics.Color.WHITE,0x99000000.toInt(),android.graphics.Color.TRANSPARENT,androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_OUTLINE,android.graphics.Color.BLACK,null));setPadding(dp(12),0,dp(12),if(controls)dp(130) else dp(16));setBottomPaddingFraction(.04f)}}
     override fun onConfigurationChanged(config:android.content.res.Configuration){
         super.onConfigurationChanged(config)
         positionSubtitles(pv.isControllerFullyVisible)

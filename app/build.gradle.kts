@@ -1,11 +1,10 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
 }
 
 android {
     namespace = "app.nova.browser"
-    compileSdk = 37
+    compileSdk { version = release(37) { minorApiLevel = 0 } }
     defaultConfig {
         applicationId = "app.nova.browser"
         minSdk = 26
@@ -55,10 +54,6 @@ android.testOptions.unitTests.all {
     it.testLogging { events("passed", "failed", "skipped"); showStandardStreams = true }
 }
 
-kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
 
-// Prototype toolchain exception: GeckoView 160 pulls core 1.19.1, whose metadata requires AGP 9.1.
-// Compile against API 37 and validate runtime on the emulator; migrate to AGP 9 before production.
-tasks.configureEach { if (name.startsWith("check") && name.endsWith("AarMetadata")) enabled = false }
 
 dependencies { implementation("androidx.media3:media3-datasource-okhttp:1.3.1") }
