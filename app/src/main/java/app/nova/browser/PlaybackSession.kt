@@ -1,0 +1,43 @@
+package app.nova.browser
+
+import java.net.URI
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+
+/** A request observation stays attached to its own resource. Never persist credentials. */
+data class RequestContext(val url: String, val headers: Map<String, String>, val observedAt: Long = System.currentTimeMillis()) {
+    fun matches(target: String): Boolean = try {
+        val a = URI(url); val b = URI(target)
+        a.scheme.equals(b.scheme, true) && a.host.equals(b.host, true) && a.port == b.port &&
+            (a.path == b.path || b.path.startsWith(a.path.substringBeforeLast('/', "") + "/"))
+    } catch (_: Exception) { false }
+    fun safeHeaders(target: String, now: Long = System.currentTimeMillis()): Map<String, String> {
+        if (!matches(target) || now - observedAt > 30 * 60_000L) return emptyMap()
+        return headers.filter { (k, v) -> k.lowercase() in ALLOWED && !v.contains('\r') && !v.contains('\n') }
+    }
+    companion object { val ALLOWED = setOf("user-agent", "referer", "origin", "cookie", "authorization", "accept", "accept-language", "x-requested-with") }
+}
+
+data class PlaybackSource(
+    val id: String = UUID.randomUUID().toString(), val url: String, val kind: String,
+    val mime: String = "", val language: String = "und", val label: String = "",
+    val context: RequestContext = RequestContext(url, emptyMap()), val evidence: String = "hint"
+)
+
+data class PlaybackSession(val id: String = UUID.randomUUID().toString(), val title: String,
+    val pageUrl: String, val sources: List<PlaybackSource>, val subtitles: List<PlaybackSource>,
+    val contexts: List<RequestContext>, val createdAt: Long = System.currentTimeMillis())
+
+object PlaybackSessions {
+    private val sessions = ConcurrentHashMap<String, PlaybackSession>()
+    fun put(session: PlaybackSession): String {
+        sessions.entries.removeIf { System.currentTimeMillis() - it.value.createdAt > 30 * 60_000L }
+        if (sessions.size >= 8) sessions.keys.firstOrNull()?.let { sessions.remove(it) }
+        sessions[session.id] = session; return session.id
+    }
+    fun get(id: String?) = id?.let { sessions[it] }
+    fun remove(id: String?) { if (id != null) sessions.remove(id) }
+}
+
+/** Preserve signed URLs verbatim. Only fragment differences are known to be request-irrelevant. */
+fun sourceKey(url: String) = url.substringBefore('#')

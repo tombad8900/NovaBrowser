@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [main, gecko]
+    branches: [main, gecko, nova-next]
     tags: ["v*"]
   workflow_dispatch:
 

@@ -1,15 +1,11 @@
 // Runs in every page and frame. Only the top frame forwards network hits; every frame scans its DOM.
 function send(m) { try { browser.runtime.sendNativeMessage("nova", m); } catch (e) {} }
 var isTop = (window === window.top);
-function fwd(item) { if (isTop) send({ t: "net", url: item.url, ct: item.ct || "" }); }
+function fwd(item) { if (isTop && item.token) send({ t: "resourceRef", token: item.token, page: location.href }); }
 browser.runtime.onMessage.addListener(function (msg) {
-  if (msg && msg.nova === "net") fwd(msg.item);
+  if (msg && msg.nova === "resource") fwd(msg);
 });
-if (isTop) {
-  browser.runtime.sendMessage({ nova: "hello" }).then(function (list) {
-    (list || []).forEach(fwd);
-  }).catch(function () {});
-}
+if (isTop) browser.runtime.sendMessage({ nova: "hello" }).then(function(list){(list||[]).forEach(fwd);}).catch(function(){});
 var re = /https?:\/\/[^\s"'<>\\)]+\.(?:m3u8|mpd|mp4|webm|mkv|vtt|srt|ass|ttml)(?:\?[^\s"'<>\\)]*)?/gi;
 function scan() {
   try {
@@ -18,7 +14,7 @@ function scan() {
     document.querySelectorAll("video,audio,source,track,a[href],iframe,embed").forEach(function (e) {
       add(e.currentSrc || e.src || e.href);
     });
-    var h = (document.documentElement ? document.documentElement.innerHTML : "").replace(/\\\//g, "/").replace(/&amp;/g, "&");
+    var h = (document.documentElement ? document.documentElement.innerHTML.slice(0, 350000) : "").replace(/\\\//g, "/").replace(/&amp;/g, "&");
     var m, n = 0;
     re.lastIndex = 0;
     while ((m = re.exec(h)) && n++ < 300) add(m[0]);

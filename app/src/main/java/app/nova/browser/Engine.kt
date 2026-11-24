@@ -17,6 +17,7 @@ object Engine {
     private const val TAG = "NovaEngine"
     private var runtime: GeckoRuntime? = null
     @Volatile var ext: WebExtension? = null
+    val observations = java.util.Collections.synchronizedMap(LinkedHashMap<String, org.json.JSONObject>())
     private val waiting = mutableListOf<(WebExtension) -> Unit>()
     private val main = Handler(Looper.getMainLooper())
 
@@ -46,7 +47,18 @@ object Engine {
         runtime = rt
         rt.webExtensionController.ensureBuiltIn("resource://android/assets/nova-ext/", EXT_ID).accept({ e ->
             Log.i(TAG, "detector extension ready: ${e?.id}")
-            if (e != null) { ext = e; main.post { val l = waiting.toList(); waiting.clear(); l.forEach { it(e) } } }
+            if (e != null) {
+                e.setMessageDelegate(object : WebExtension.MessageDelegate {
+                    override fun onMessage(nativeApp: String, message: Any, sender: WebExtension.MessageSender): GeckoResult<Any>? {
+                        if (nativeApp != "nova" || sender.environmentType != WebExtension.MessageSender.ENV_TYPE_EXTENSION || message !is org.json.JSONObject) return null
+                        if (message.optString("t") == "resource") synchronized(observations) {
+                            if (observations.size >= 600) observations.remove(observations.keys.first())
+                            observations[message.optString("token")] = message
+                        }
+                        return null
+                    }
+                }, "nova")
+                ext = e; main.post { val l = waiting.toList(); waiting.clear(); l.forEach { it(e) } } }
         }, { t -> Log.e(TAG, "detector extension failed", t) })
         return rt
     }

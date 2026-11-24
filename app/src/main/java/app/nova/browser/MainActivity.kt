@@ -34,6 +34,8 @@ class MainActivity : AppCompatActivity() {
 
     class Tab(val session: GeckoSession) {
         val found = LinkedHashMap<String, Found>()
+        val resources = LinkedHashMap<String, PlaybackSource>()
+        val contexts = LinkedHashMap<String, RequestContext>()
         var title = ""
         var url = ""
         var desktop = false
@@ -178,6 +180,24 @@ class MainActivity : AppCompatActivity() {
             override fun onMessage(nativeApp: String, message: Any, sender: WebExtension.MessageSender): GeckoResult<Any>? {
                 if (nativeApp != "nova" || sender.webExtension.id != Engine.EXT_ID || message !is JSONObject) return null
                 when (message.optString("t")) {
+                    "resourceRef" -> {
+                        if (message.optString("page").substringBefore('#') != tab.url.substringBefore('#')) return null
+                        val resource = Engine.observations.remove(message.optString("token")) ?: return null
+                        val u = resource.optString("url")
+                        val ct = resource.optString("ct")
+                        val h = resource.optJSONObject("headers") ?: JSONObject()
+                        val headers = h.keys().asSequence().associateWith { h.optString(it) }
+                        val context = RequestContext(u, headers, resource.optLong("time", System.currentTimeMillis()))
+                        val kind = if (resource.optBoolean("segment")) "CONTEXT" else Sniffer.classifyMime(u, ct) ?: "CONTEXT"
+                        ui.post {
+                            if (tab.contexts.size >= 300) tab.contexts.remove(tab.contexts.keys.first())
+                            tab.contexts[sourceKey(u)] = context
+                            if (kind == "CONTEXT") return@post
+                            val source = PlaybackSource(url=u,kind=kind,mime=ct,context=context,evidence="network")
+                            tab.resources[sourceKey(u)] = source
+                            addFound(tab, Found(u, kind, "network"))
+                        }
+                    }
                     "net" -> {
                         val u = message.optString("url")
                         Sniffer.classifyMime(u, message.optString("ct"))?.let { k -> ui.post { addFound(tab, Found(u, k, "network")) } }
@@ -200,7 +220,7 @@ class MainActivity : AppCompatActivity() {
         val tab = Tab(s)
         s.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onPageStart(session: GeckoSession, u: String) {
-                tab.found.clear(); tab.url = u
+                tab.found.clear(); tab.resources.clear(); tab.contexts.clear(); tab.url = u
                 if (cur === tab) { refreshCounts(); if (!urlBar.hasFocus()) urlBar.setText(shown(u)) }
             }
             override fun onPageStop(session: GeckoSession, success: Boolean) {
@@ -287,7 +307,8 @@ class MainActivity : AppCompatActivity() {
         tabBtn.text = tabs.size.toString()
         val n = cur?.found?.values?.count { it.kind != "SUB" } ?: 0
         val s = cur?.found?.values?.count { it.kind == "SUB" } ?: 0
-        snifBtn.text = "◉ $n" + if (s > 0) "+${s}cc" else ""
+        snifBtn.text = if (n > 0) "▶" else "▷"
+        snifBtn.contentDescription = "Play in Nova"
         snifBtn.setTextColor(if (n > 0) accent else textColor)
     }
 
@@ -324,26 +345,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSniffer() {
         val t = cur ?: return
-        sheet { l, d ->
-            val media = t.found.values.filter { it.kind != "SUB" }
-            val subs = t.found.values.filter { it.kind == "SUB" }
-            title(l, "Link detector  (${media.size} media, ${subs.size} subtitles)")
-            if (media.isEmpty() && subs.isEmpty()) {
-                l.addView(TextView(this).apply {
-                    text = "Nothing found yet. Start the video on the page, then reopen this sheet. Links hidden behind blob: players, DRM or logins can't be captured."
-                    setTextColor(dim); textSize = 13f
-                })
-            }
-            val subUrls = subs.map { it.url }
-            media.forEach { f ->
-                item(l, "[${f.kind}]  ${f.url.substringBefore('?').substringAfterLast('/').ifBlank { f.url }.take(80)}", f.url,
-                    { d.dismiss(); openPlayer(f.url, subUrls, t.url, t) },
-                    { copy(f.url); Toast.makeText(this, "Link copied", Toast.LENGTH_SHORT).show() })
-            }
-            if (subs.isNotEmpty()) title(l, "Subtitles (sent to the player automatically)")
-            subs.forEach { f -> item(l, "[SUB]  ${f.url.substringBefore('?').substringAfterLast('/')}", f.url, { copy(f.url); Toast.makeText(this, "Link copied", Toast.LENGTH_SHORT).show() }) }
-            item(l, "Tap = play in Nova player. Long press = copy link.", null, {})
+        val candidates = t.found.values.filter { it.kind != "SUB" && it.kind != "TORRENT" }
+        if (candidates.isEmpty()) {
+            Toast.makeText(this, "Start the video on the page, then tap Play in Nova", Toast.LENGTH_LONG).show()
+            return
         }
+        val all = t.found.values.map { f -> t.resources[sourceKey(f.url)] ?: PlaybackSource(url=f.url,kind=f.kind) }
+        val ps = PlaybackSession(title=t.title.ifBlank { "Nova" }, pageUrl=t.url,
+            sources=all.filter { it.kind != "SUB" && it.kind != "TORRENT" },
+            subtitles=all.filter { it.kind == "SUB" }, contexts=t.contexts.values.toList())
+        startActivity(Intent(this, PlayerActivity::class.java).putExtra("playbackSession",PlaybackSessions.put(ps)))
     }
 
     private fun copy(s: String) {
