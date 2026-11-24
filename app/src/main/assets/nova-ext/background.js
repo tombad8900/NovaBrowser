@@ -40,4 +40,9 @@ browser.webRequest.onCompleted.addListener(d=>requests.delete(d.requestId),{urls
 browser.webRequest.onErrorOccurred.addListener(d=>requests.delete(d.requestId),{urls:['<all_urls>']});
 browser.webRequest.onBeforeRequest.addListener(d=>{if(d.type==='main_frame'){pending.delete(d.tabId);playlistDirs.delete(d.tabId);epochs.set(d.tabId,(epochs.get(d.tabId)||0)+1);}},{urls:['<all_urls>']});
 browser.tabs.onRemoved.addListener(id=>{pending.delete(id);epochs.delete(id);playlistDirs.delete(id);});
-browser.runtime.onMessage.addListener((m,s)=>{if(m && m.nova==='hello' && s.tab) return Promise.resolve({epoch:epochs.get(s.tab.id)||0,items:pending.get(s.tab.id)||[]});});
+browser.runtime.onMessage.addListener((m,s)=>{
+ if(!m||!s.tab)return;
+ const epoch=epochs.get(s.tab.id)||0;
+ if(m.nova==='hello')return Promise.resolve({epoch,items:pending.get(s.tab.id)||[]});
+ if(m.nova==='frameScan' && m.epoch===epoch){browser.tabs.sendMessage(s.tab.id,{nova:'frameScan',epoch,urls:(m.urls||[]).slice(0,150),tracks:(m.tracks||[]).slice(0,60)},{frameId:0}).catch(()=>{});}
+});

@@ -92,7 +92,7 @@ class MainActivity : AppCompatActivity() {
                     d.dismiss(); t.session.settings.useTrackingProtection=store.toggleProtection(host);t.session.reload()
                 })
             item(l, tr("Tracking protection for this site", "حماية التتبع لهذا الموقع"),
-                tr("Cookie isolation and GPC remain on globally. Full ad filtering is being verified.", "عزل ملفات الارتباط وإشارة الخصوصية يظلان مفعلين. الحجب الكامل للإعلانات قيد التحقق."), {})
+                tr("Cookie isolation and GPC remain on globally. Use uBlock controls above for ad-filter exceptions.", "عزل ملفات الارتباط وإشارة الخصوصية يظلان مفعلين. استخدم أدوات uBlock أعلاه لاستثناءات حجب الإعلانات."), {})
         }
     }
 

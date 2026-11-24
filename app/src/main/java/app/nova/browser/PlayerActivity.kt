@@ -194,7 +194,7 @@ class PlayerActivity : AppCompatActivity() {
                 override fun onStatus(t:String){runOnUiThread{status.text=t}}
                 override fun onReady(url:String,name:String){runOnUiThread{session=ss.copy(sources=listOf(PlaybackSource(url=url,kind="VIDEO")));play(0,0)}}
                 override fun onError(e:String){runOnUiThread{status.text=tr("Torrent failed. Try another source.","تعذر تشغيل التورنت. جرّب مصدراً آخر.")}}
-            })};return
+            },fetchTorrent={u->ScopedMediaHttp.client(ss.contexts+ss.sources.map{it.context},source.context).newCall(okhttp3.Request.Builder().url(u).build()).execute().use{r->if(!r.isSuccessful)throw java.io.IOException("Torrent request refused");val input=r.body?.byteStream()?:throw java.io.IOException("Empty torrent");val bytes=readTorrentMetadata(input);require(bytes.size<=4*1024*1024){"Torrent metadata too large"};bytes}})};return
         }
         player?.release()
         val contexts=(ss.contexts+ss.sources.map{it.context}+ss.subtitles.map{it.context})

@@ -1,10 +1,10 @@
 // Content scripts never receive request headers. Network references are opaque.
-function send(m) { try { browser.runtime.sendNativeMessage('nova', m).catch(()=>{}); } catch (_) {} }
+function send(m) { try { if(!isTop && m.t==='scan'){browser.runtime.sendMessage({...m,nova:'frameScan',epoch}).catch(()=>{});return;}browser.runtime.sendNativeMessage('nova', m).catch(()=>{}); } catch (_) {} }
 const isTop = window === window.top;
 let epoch=null;
 function fwd(item) { if (isTop && item.token && item.epoch===epoch) send({t:'resourceRef',token:item.token,page:location.href}); }
-browser.runtime.onMessage.addListener(m => { if(m && m.nova==='resource') fwd(m); });
-if(isTop) browser.runtime.sendMessage({nova:'hello'}).then(result=>{epoch=result.epoch;(result.items||[]).forEach(fwd);}).catch(()=>{});
+browser.runtime.onMessage.addListener(m => { if(m && m.nova==='resource') fwd(m);if(isTop && m && m.nova==='frameScan' && m.epoch===epoch)send({t:'scan',urls:m.urls,tracks:m.tracks,page:location.href}); });
+browser.runtime.sendMessage({nova:'hello'}).then(result=>{epoch=result.epoch;if(isTop)(result.items||[]).forEach(fwd);queue();}).catch(()=>{});
 const mediaPattern=/https?:\/\/[^\s"'<>\\)]+\.(?:m3u8|mpd|mp4|webm|mkv|vtt|srt|ass|ttml)(?:\?[^\s"'<>\\)]*)?/gi;
 let timer=0;
 const sent=new Set();
@@ -33,3 +33,6 @@ function queue(){if(!timer)timer=setTimeout(scan,350);}
 document.addEventListener('play',queue,true);
 document.addEventListener('loadedmetadata',queue,true);
 window.addEventListener('load',()=>{queue();setTimeout(queue,3000);setTimeout(queue,8000);});
+
+// React to late player/source insertion, without a periodic whole-page scan.
+new MutationObserver(changes=>{if(changes.some(c=>c.type==='childList'||['src','href','srclang','label'].includes(c.attributeName)))queue();}).observe(document,{subtree:true,childList:true,attributes:true,attributeFilter:['src','href','srclang','label']});

@@ -26,6 +26,9 @@ async function test(){
  await listeners.response({...base,requestId:'stale',responseHeaders:[{name:'Content-Type',value:'video/mp4'}]});
  assert.equal(forwarded.length,prior);
  const hello=await listeners.message({nova:'hello'},{tab:{id:1}});assert.equal(hello.items.length,0);
+ await listeners.message({nova:'frameScan',epoch:hello.epoch,urls:['https://frame.test/movie.mp4'],tracks:[]},{tab:{id:1}});
+ assert.equal(forwarded.at(-1).nova,'frameScan');assert.equal(forwarded.at(-1).urls[0],'https://frame.test/movie.mp4');
+ const count=forwarded.length;await listeners.message({nova:'frameScan',epoch:hello.epoch-1,urls:['https://old.test/movie.mp4']},{tab:{id:1}});assert.equal(forwarded.length,count);
  console.log('PASS detector header privacy, HTML rejection, segment context, navigation generation');
 }
 test().catch(e=>{console.error(e);process.exit(1)});

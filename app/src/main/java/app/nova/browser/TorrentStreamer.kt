@@ -38,7 +38,7 @@ class TorrentStreamer(private val dir: File) {
 
     private var worker: Thread? = null
 
-    fun start(src: String, l: Listener) {
+    fun start(src: String, l: Listener, fetchTorrent:((String)->ByteArray)?=null) {
         worker = Thread {
             try {
                 dir.deleteRecursively(); dir.mkdirs()
@@ -56,18 +56,21 @@ class TorrentStreamer(private val dir: File) {
                     }
                     data ?: throw IllegalStateException("No metadata received in 90s (no peers found)")
                 } else {
-                    URL(src).openStream().use { it.readBytes() }
+                    fetchTorrent?.invoke(src) ?: URL(src).openConnection().apply{connectTimeout=15000;readTimeout=30000}.getInputStream().use { input->val bytes=readTorrentMetadata(input);require(bytes.size<=4*1024*1024){"Torrent metadata too large"};bytes }
                 }
                 if (stopped) return@Thread
                 ti = TorrentInfo.bdecode(bytes)
                 val fs = ti.files()
-                var best = 0
-                for (i in 0 until fs.numFiles()) if (fs.fileSize(i) > fs.fileSize(best)) best = i
+                val media=(0 until fs.numFiles()).filter{fs.fileName(it).substringAfterLast('.',"").lowercase() in setOf("mp4","m4v","mkv","webm","mov","avi","mp3","m4a","flac","ogg")}
+                require(media.isNotEmpty()){ "No playable media in torrent" }
+                val best=media.maxBy{fs.fileSize(it)}
                 fileIdx = best; fileSize = fs.fileSize(best); fileName = fs.fileName(best)
                 file = File(dir, fs.filePath(best))
+                require(file.canonicalPath.startsWith(dir.canonicalPath+File.separator)){"Invalid torrent file path"}
                 s.download(ti, dir)
                 var h: TorrentHandle? = null
                 while (h == null && !stopped) { h = s.find(ti.infoHash()); Thread.sleep(100) }
+                if(stopped)return@Thread
                 handle = h!!
                 h.setFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
                 val pr = Array(fs.numFiles()) { if (it == best) Priority.DEFAULT else Priority.IGNORE }
@@ -77,11 +80,13 @@ class TorrentStreamer(private val dir: File) {
                 startServer()
                 // wait for a small head start, then hand the loopback URL to the player
                 val needHead = headPieces()
+                val bufferDeadline=System.currentTimeMillis()+120_000
                 while (!stopped) {
                     val have = needHead.count { h.havePiece(it) }
                     val st = h.status()
                     report(l, "Buffering $fileName\n${have}/${needHead.size} start pieces · peers ${st.numPeers()} · ${st.downloadRate() / 1024} KB/s")
                     if (have == needHead.size) break
+                    if(System.currentTimeMillis()>bufferDeadline)throw java.io.IOException("No playable data received within two minutes")
                     Thread.sleep(800)
                 }
                 if (stopped) return@Thread
@@ -197,4 +202,11 @@ class TorrentStreamer(private val dir: File) {
             try { Thread.sleep(500); dir.deleteRecursively() } catch (_: Exception) {}
         }.start()
     }
+}
+
+/** Bounded read compatible with Android26. */
+internal fun readTorrentMetadata(input:java.io.InputStream):ByteArray {
+ val out=java.io.ByteArrayOutputStream();val buffer=ByteArray(16384)
+ while(true){val n=input.read(buffer);if(n<0)break;require(out.size()+n<=4*1024*1024){"Torrent metadata too large"};out.write(buffer,0,n)}
+ return out.toByteArray()
 }

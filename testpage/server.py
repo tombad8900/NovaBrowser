@@ -10,6 +10,12 @@ class Handler(SimpleHTTPRequestHandler):
         if path=='/protection.html':
             self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers()
             self.wfile.write(b'<meta name=viewport content="width=device-width"><h2>Protection fixture</h2><p id=ad>Checking ad request</p><script>fetch("https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js",{mode:"no-cors"}).then(()=>document.getElementById("ad").textContent="Request completed").catch(()=>document.getElementById("ad").textContent="Ad request blocked or network failed");</script>');return
+        if path=='/frame.html':
+            self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers()
+            self.wfile.write(b'<title>Iframe detector test</title><h2>Iframe detector</h2><iframe src="/frame-inner.html"></iframe>');return
+        if path=='/frame-inner.html':
+            self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers()
+            self.wfile.write(b'<script>setTimeout(()=>{const a=document.createElement("a");a.href="/clip.mp4";a.textContent="Late video link";document.body.appendChild(a);},10000)</script><body>Delayed iframe source</body>');return
         if path=='/popup.html':
             self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers()
             self.wfile.write(b'<meta name=viewport content="width=device-width"><h2>Popup regression</h2><a target="_blank" href="/plain.html">Open safe tab</a><script>window.open("/plain.html");</script>');return
