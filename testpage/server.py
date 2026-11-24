@@ -24,7 +24,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.wfile.write(b'<title>Source switch consent regression</title><h2>Source switch consent regression</h2><a href="/clip.mp4">Video</a><a href="magnet:?xt=urn:btih:0123456789012345678901234567890123456789">Torrent</a>');return
         if path=='/test.html':
             self.send_response(200);self.send_header('Content-Type','text/html');self.send_header('Set-Cookie','nova_test=ok; Path=/');self.end_headers()
-            self.wfile.write(b'''<!doctype html><meta name=viewport content="width=device-width,initial-scale=1"><body style="font:18px sans-serif;background:#fafafa;color:#111;padding:24px"><title>Nova playback test</title><h2>Nova context test</h2><a href="/fake.m3u8">Not media</a><p>Protected video and Arabic subtitle.</p><video width=260 controls><source src="/protected/clip.mp4" type="video/mp4"><track src="/protected/ar.vtt" kind=subtitles srclang=ar label="Arabic"></video><script>fetch('/protected/ar.vtt');fetch('/protected/hls/master.m3u8').then(()=>{const a=document.createElement('a');a.href='/protected/hls/fragment.m4a';document.body.appendChild(a);setTimeout(()=>fetch(a.href),1000)});fetch('/fake.m3u8');</script>''');return
+            self.wfile.write(b'''<!doctype html><meta name=viewport content="width=device-width,initial-scale=1"><body style="font:18px sans-serif;background:#fafafa;color:#111;padding:24px"><title>Nova playback test</title><h2>Nova context test</h2><a href="/fake.m3u8">Not media</a><p>Protected video and Arabic subtitle.</p><video width=260 controls><source src="/protected/clip.mp4" type="video/mp4"><track src="/protected/ar.vtt" kind=subtitles srclang=ar label="Arabic"><track src="/protected/captions?id=ar" kind=subtitles srclang=ar label="Arabic extensionless"></video><script>fetch('/protected/ar.vtt');setTimeout(()=>fetch('/protected/captions?id=ar'),1500);fetch('/protected/hls/master.m3u8').then(()=>{const a=document.createElement('a');a.href='/protected/hls/fragment.m4a';document.body.appendChild(a);setTimeout(()=>fetch(a.href),1000)});fetch('/fake.m3u8');</script>''');return
         if path=='/protected/hls/fragment.m4a':
             self.send_response(200);self.send_header('Content-Type','audio/mp4');self.end_headers();self.wfile.write(b'fixture-fragment');return
         if path.startswith('/protected/'):
@@ -33,6 +33,10 @@ class Handler(SimpleHTTPRequestHandler):
             if not cookie or not referer.startswith('http://10.0.2.2:8000/'):
                 self.send_response(403);self.end_headers();return
             self.path=path.removeprefix('/protected')
+        if path=='/protected/captions':
+            if 'nova_test=ok' not in self.headers.get('Cookie','') or not self.headers.get('Referer','').startswith('http://10.0.2.2:8000/'):
+                self.send_response(403);self.end_headers();return
+            self.send_response(200);self.send_header('Content-Type','text/plain');self.end_headers();self.wfile.write('WEBVTT\n\n00:00:00.000 --> 00:02:00.000\nترجمة بدون امتداد\n'.encode());return
         if path=='/fragment.m4a':
             self.send_response(200);self.send_header('Content-Type','audio/mp4');self.end_headers();self.wfile.write(b'fixture-fragment');return
         if path=='/fake.m3u8':

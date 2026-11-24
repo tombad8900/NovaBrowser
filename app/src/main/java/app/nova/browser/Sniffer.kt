@@ -32,14 +32,20 @@ object Sniffer {
         return when {
             c in setOf("application/vnd.apple.mpegurl","application/x-mpegurl","audio/mpegurl","audio/x-mpegurl") -> "HLS"
             c == "application/dash+xml" -> "DASH"
-            c == "text/vtt" || c == "application/x-subrip" -> "SUB"
+            c in setOf("text/vtt","application/x-subrip","application/ttml+xml","text/x-ssa","text/x-ass","application/x-ssa","application/x-ass") -> "SUB"
             c.startsWith("video/") -> "VIDEO"
             c.startsWith("audio/") -> "AUDIO"
             else -> classify(url)
         }
     }
 
-    fun mimeForSub(url: String): String {
+    fun mimeForSub(url:String,contentType:String=""):String {
+        when(contentType.substringBefore(';').trim().lowercase()){
+            "text/vtt"->return "text/vtt"
+            "application/x-subrip"->return "application/x-subrip"
+            "application/ttml+xml"->return "application/ttml+xml"
+            "text/x-ssa","text/x-ass","application/x-ssa","application/x-ass"->return "text/x-ssa"
+        }
         val ext = url.substringBefore('#').substringBefore('?').lowercase().substringAfterLast('.', "")
         return when (ext) {
             "srt" -> "application/x-subrip"

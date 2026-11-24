@@ -5,7 +5,7 @@ let epoch=null;
 function fwd(item) { if (isTop && item.token && item.epoch===epoch) send({t:'resourceRef',token:item.token,page:location.href}); }
 browser.runtime.onMessage.addListener(m => { if(m && m.nova==='resource') fwd(m);if(isTop && m && m.nova==='frameScan' && m.epoch===epoch)send({t:'scan',urls:m.urls,tracks:m.tracks,page:location.href}); });
 browser.runtime.sendMessage({nova:'hello'}).then(result=>{epoch=result.epoch;if(isTop)(result.items||[]).forEach(fwd);queue();}).catch(()=>{});
-const mediaPattern=/https?:\/\/[^\s"'<>\\)]+\.(?:m3u8|mpd|mp4|webm|mkv|vtt|srt|ass|ttml)(?:\?[^\s"'<>\\)]*)?/gi;
+const mediaPattern=/https?:\/\/[^\s"'<>\\)]+\.(?:m3u8|mpd|mp4|webm|mkv|vtt|srt|ass|ssa|ttml|dfxp)(?:\?[^\s"'<>\\)]*)?/gi;
 let timer=0;
 const sent=new Set();
 const scannedScripts=new WeakMap();
@@ -31,7 +31,7 @@ function scan() {
     const tracks=[];
     document.querySelectorAll('track[src]').forEach(e=>{if(tracks.length<60)tracks.push({url:e.src,language:e.srclang||'und',label:e.label||''});});
     const signature=JSON.stringify(tracks);
-    if(out.length||signature!==lastTracks){lastTracks=signature;send({t:'scan',urls:out,tracks,page:location.href});}
+    if(out.length||signature!==lastTracks){browser.runtime.sendMessage({nova:'trackHints',epoch,urls:tracks.map(t=>t.url)}).catch(()=>{});lastTracks=signature;send({t:'scan',urls:out,tracks,page:location.href});}
     if(sent.size>600)sent.clear();
   }catch(_){}
 }

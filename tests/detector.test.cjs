@@ -29,6 +29,11 @@ async function test(){
  await listeners.message({nova:'frameScan',epoch:hello.epoch,urls:['https://frame.test/movie.mp4'],tracks:[]},{tab:{id:1}});
  assert.equal(forwarded.at(-1).nova,'frameScan');assert.equal(forwarded.at(-1).urls[0],'https://frame.test/movie.mp4');
  const count=forwarded.length;await listeners.message({nova:'frameScan',epoch:hello.epoch-1,urls:['https://old.test/movie.mp4']},{tab:{id:1}});assert.equal(forwarded.length,count);
+ await listeners.message({nova:'trackHints',epoch:hello.epoch,urls:['https://cdn.test/caption?id=ar']},{tab:{id:1}});
+ const countNative=native.length;
+ listeners.send({...base,requestId:'caption',url:'https://cdn.test/caption?id=ar',requestHeaders:[{name:'Cookie',value:'sub=one'}]});
+ await listeners.response({...base,requestId:'caption',url:'https://cdn.test/caption?id=ar',responseHeaders:[{name:'Content-Type',value:'text/plain'}]});
+ assert.equal(native.length,countNative+1);assert.equal(native.at(-1).track,true);assert.equal(native.at(-1).headers.Cookie,'sub=one');
  console.log('PASS detector header privacy, HTML rejection, segment context, navigation generation');
 }
 test().catch(e=>{console.error(e);process.exit(1)});

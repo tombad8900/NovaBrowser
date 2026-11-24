@@ -1,7 +1,7 @@
 // Request metadata is delivered directly to native code, never to page content scripts.
-const requests = new Map(), pending = new Map(), epochs = new Map(), playlistDirs=new Map();
+const requests = new Map(), pending = new Map(), epochs = new Map(), playlistDirs=new Map(), trackUrls=new Map();
 const ext = /\.(m3u8|mpd|mp4|m4v|webm|mkv|mov|mp3|m4a|aac|ogg|opus|vtt|srt|ass|ssa|ttml|dfxp|torrent)(\?|#|$)/i;
-const mime = /^(video\/|audio\/|application\/(vnd\.apple\.mpegurl|x-mpegurl|dash\+xml|x-subrip)|text\/vtt)/i;
+const mime = /^(video\/|audio\/|application\/(vnd\.apple\.mpegurl|x-mpegurl|dash\+xml|x-subrip)|text\/(vtt|x-ssa|x-ass)|application\/(ttml\+xml|x-ssa|x-ass))/i;
 const allowed = new Set(['user-agent','referer','origin','cookie','authorization','accept','accept-language','x-requested-with']);
 let serial = 0;
 function headersOf(list) {
@@ -21,15 +21,16 @@ browser.webRequest.onHeadersReceived.addListener(async d => {
   const type = ct ? ct.value.split(';')[0].trim() : '';
   // A misleading extension must not turn an HTML/error response into a video.
   const rejected=/text\/html|application\/json/i.test(type)||d.statusCode>=400;
-  if(rejected&&!ext.test(d.url))return;
-  const isCandidate = mime.test(type) || ext.test(d.url);
+  const track=(trackUrls.get(d.tabId)||new Set()).has(d.url);
+  if(rejected&&!ext.test(d.url)&&!track)return;
+  const isCandidate = track || mime.test(type) || ext.test(d.url);
   const isPlaylist=/mpegurl|dash\+xml/i.test(type)||/\.(m3u8|mpd)(\?|#|$)/i.test(d.url);
   if(isPlaylist&&!rejected){let dirs=playlistDirs.get(d.tabId)||new Set();dirs.add(d.url.split('?')[0].replace(/[^/]*$/,''));if(dirs.size>60)dirs.delete(dirs.values().next().value);playlistDirs.set(d.tabId,dirs);}
   const fromPlaylist=[...(playlistDirs.get(d.tabId)||[])].some(dir=>d.url.startsWith(dir));
   const segment = /\.(ts|m4s)(\?|#|$)/i.test(d.url)||(/\.(m4a|aac)(\?|#|$)/i.test(d.url)&&fromPlaylist);
   if (!isCandidate && !rejected && d.type !== 'media' && !segment) return;
   const token = Date.now().toString(36) + '-' + (++serial);
-  const observation = {t:'resource',token,url:d.url,ct:type,segment,rejected,headers:r.headers,time:r.time};
+  const observation = {t:'resource',token,url:d.url,ct:type,track,segment,rejected,headers:r.headers,time:r.time};
   try { await browser.runtime.sendNativeMessage('nova', observation); } catch (_) { return; }
   if(r.epoch !== (epochs.get(d.tabId)||0)) return;
   const epoch=r.epoch;
@@ -38,11 +39,12 @@ browser.webRequest.onHeadersReceived.addListener(async d => {
 }, {urls:['<all_urls>']}, ['responseHeaders']);
 browser.webRequest.onCompleted.addListener(d=>requests.delete(d.requestId),{urls:['<all_urls>']});
 browser.webRequest.onErrorOccurred.addListener(d=>requests.delete(d.requestId),{urls:['<all_urls>']});
-browser.webRequest.onBeforeRequest.addListener(d=>{if(d.type==='main_frame'){pending.delete(d.tabId);playlistDirs.delete(d.tabId);epochs.set(d.tabId,(epochs.get(d.tabId)||0)+1);}},{urls:['<all_urls>']});
-browser.tabs.onRemoved.addListener(id=>{pending.delete(id);epochs.delete(id);playlistDirs.delete(id);});
+browser.webRequest.onBeforeRequest.addListener(d=>{if(d.type==='main_frame'){pending.delete(d.tabId);playlistDirs.delete(d.tabId);trackUrls.delete(d.tabId);epochs.set(d.tabId,(epochs.get(d.tabId)||0)+1);}},{urls:['<all_urls>']});
+browser.tabs.onRemoved.addListener(id=>{pending.delete(id);epochs.delete(id);playlistDirs.delete(id);trackUrls.delete(id);});
 browser.runtime.onMessage.addListener((m,s)=>{
  if(!m||!s.tab)return;
  const epoch=epochs.get(s.tab.id)||0;
+ if(m.nova==='trackHints' && m.epoch===epoch){const urls=trackUrls.get(s.tab.id)||new Set();for(const u of (m.urls||[]).slice(0,60)){if(typeof u==='string'&&/^https?:/.test(u))urls.add(u);}while(urls.size>300)urls.delete(urls.values().next().value);trackUrls.set(s.tab.id,urls);return;}
  if(m.nova==='hello')return Promise.resolve({epoch,items:pending.get(s.tab.id)||[]});
  if(m.nova==='frameScan' && m.epoch===epoch){browser.tabs.sendMessage(s.tab.id,{nova:'frameScan',epoch,urls:(m.urls||[]).slice(0,150),tracks:(m.tracks||[]).slice(0,60)},{frameId:0}).catch(()=>{});}
 });

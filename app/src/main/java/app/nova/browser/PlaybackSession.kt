@@ -46,3 +46,9 @@ object PlaybackSessions {
 
 /** Preserve signed URLs verbatim. Only fragment differences are known to be request-irrelevant. */
 fun sourceKey(url: String) = url.substringBefore('#')
+
+/** A track is a candidate, not proof of load/format success. Keep network context if observed. */
+internal fun subtitleFromTrack(url:String,language:String,label:String,previous:PlaybackSource?,context:RequestContext?):PlaybackSource {
+    val old=previous?.takeIf{it.kind=="SUB"}
+    return (old?:PlaybackSource(url=url,kind="SUB",mime=Sniffer.mimeForSub(url),context=context?:RequestContext(url,emptyMap()),evidence=if(context==null)"track-hint" else "track+network")).copy(language=language,label=label,context=context?:old?.context?:RequestContext(url,emptyMap()))
+}

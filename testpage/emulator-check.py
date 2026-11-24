@@ -20,7 +20,7 @@ if any('AUDIO' in n.attrib.get('text','') for n in dump().iter()):raise RuntimeE
 shot('5-sources')
 tap('VIDEO · 10.0.2.2');time.sleep(3);adb('shell','input','tap','36','608');shot('5a-mp4')
 tap('Sources');tap('HLS · 10.0.2.2');time.sleep(3);adb('shell','input','tap','36','608');shot('5b-hls')
-tap('Subtitles');expect('العربية');shot('6-subtitles');adb('shell','input','keyevent','KEYCODE_BACK')
+tap('Subtitles');expect('العربية');expect('Arabic extensionless');shot('6-subtitles');tap('Arabic extensionless');time.sleep(2);shot('6b-extensionless-selected');tap('Subtitles');adb('shell','input','keyevent','KEYCODE_BACK')
 tap('Quality');expect('Available quality');expect('144p');expect('240p');shot('7-quality');tap('144p');time.sleep(2);shot('7b-quality-selected')
 tap('Rotate');time.sleep(2);shot('8-landscape')
 tap('Subtitles');expect('العربية');shot('8b-landscape-subs');adb('shell','input','keyevent','KEYCODE_BACK')

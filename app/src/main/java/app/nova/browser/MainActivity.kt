@@ -235,18 +235,22 @@ class MainActivity : AppCompatActivity() {
                         val h = resource.optJSONObject("headers") ?: JSONObject()
                         val headers = h.keys().asSequence().associateWith { h.optString(it) }
                         val context = RequestContext(u, headers, resource.optLong("time", System.currentTimeMillis()))
-                        val kind = if(resource.optBoolean("rejected")) "REJECTED" else if (resource.optBoolean("segment")) "CONTEXT" else Sniffer.classifyMime(u, ct) ?: "CONTEXT"
+                        val kind = if(resource.optBoolean("rejected")) "REJECTED" else if (resource.optBoolean("segment")) "CONTEXT" else if(resource.optBoolean("track")) "SUB" else Sniffer.classifyMime(u, ct) ?: "CONTEXT"
                         ui.post {
                             if (generation != tab.generation) return@post
-                            if(kind=="REJECTED") {tab.rejected.add(sourceKey(u));tab.found.remove(sourceKey(u));tab.resources.remove(sourceKey(u));if(cur===tab)refreshCounts();return@post}
+                            if(kind=="REJECTED") {tab.rejected.add(sourceKey(u));trimPageState(tab);tab.found.remove(sourceKey(u));tab.resources.remove(sourceKey(u));if(cur===tab)refreshCounts();return@post}
                             if (tab.contexts.size >= 300) tab.contexts.remove(tab.contexts.keys.first())
                             tab.contexts[sourceKey(u)] = context
-                            if (resource.optBoolean("segment")) {val key=sourceKey(u);tab.fragments.add(key);tab.found.remove(key);tab.resources.remove(key);if(cur===tab)refreshCounts();return@post}
-                            if (kind == "CONTEXT") return@post
+                            if (resource.optBoolean("segment")) {val key=sourceKey(u);tab.fragments.add(key);trimPageState(tab);tab.found.remove(key);tab.resources.remove(key);if(cur===tab)refreshCounts();return@post}
+                            if (kind == "CONTEXT") {
+                                tab.subtitleHints[sourceKey(u)]?.let{(lang,label)->if(sourceKey(u) !in tab.rejected){tab.resources[sourceKey(u)]=subtitleFromTrack(u,lang,label,null,context);addFound(tab,Found(u,"SUB","track+network"));trimPageState(tab)}}
+                                return@post
+                            }
                             val arabic = Regex("(?i)([/_.?&=-])(ar|ara|arabic)([/_.?&=-]|$)").containsMatchIn(u)
                             val hint=tab.subtitleHints[sourceKey(u)]
                             val source = PlaybackSource(url=u,kind=kind,mime=ct,context=context,evidence="network",language=hint?.first?:if(arabic)"ar" else "und",label=hint?.second?:if(arabic)"العربية" else "")
                             tab.resources[sourceKey(u)] = source
+                            trimPageState(tab)
                             addFound(tab, Found(u, kind, "network"))
                         }
                     }
@@ -263,7 +267,15 @@ class MainActivity : AppCompatActivity() {
                             val tracks=message.optJSONArray("tracks")
                             val hints=(0 until (tracks?.length()?:0)).mapNotNull{i->tracks?.optJSONObject(i)?.let{o->Triple(o.optString("url"),o.optString("language","und"),o.optString("label"))}}
                             ui.post { if(generation==tab.generation) {
-                                hints.forEach{(u,lang,label)->if(u.startsWith("http")){val key=sourceKey(u);tab.subtitleHints[key]=lang to label;tab.resources[key]?.let{tab.resources[key]=it.copy(language=lang,label=label)}}}
+                                hints.forEach{(u,lang,label)->if(u.startsWith("http://")||u.startsWith("https://")){
+                                    val key=sourceKey(u);tab.subtitleHints[key]=lang to label
+                                    if(key !in tab.rejected && key !in tab.fragments){
+                                        val previous=tab.resources[key]
+                                        tab.resources[key]=subtitleFromTrack(u,lang,label,previous,tab.contexts[key])
+                                        addFound(tab,Found(u,"SUB","track"))
+                                    }
+                                }}
+                                trimPageState(tab)
                                 f.forEach { addFound(tab, it) }
                             }}
                         }
@@ -423,6 +435,12 @@ class MainActivity : AppCompatActivity() {
         playAction.background=if(ready)rounded(0xFF252035.toInt(),14) else null
     }
 
+    private fun trimPageState(t:Tab){
+        while(t.rejected.size>600)t.rejected.remove(t.rejected.first())
+        while(t.fragments.size>600)t.fragments.remove(t.fragments.first())
+        while(t.subtitleHints.size>300)t.subtitleHints.remove(t.subtitleHints.keys.first())
+        while(t.resources.size>300)t.resources.remove(t.resources.keys.first())
+    }
     private fun addFound(t: Tab, f: Found) {
         val key=sourceKey(f.url)
         if(key in t.rejected || key in t.fragments || t.found.containsKey(key)) return
