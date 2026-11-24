@@ -54,6 +54,21 @@ class Store(ctx: Context) {
         p.edit().putStringSet("protectionOff", set).apply(); return on
     }
 
+    var searchEngine:String
+        get()=p.getString("searchEngine","DuckDuckGo")?:"DuckDuckGo"
+        set(v){p.edit().putString("searchEngine",v).apply()}
+    var subtitleSize:Int
+        get()=p.getInt("subtitleSize",20)
+        set(v){p.edit().putInt("subtitleSize",v.coerceIn(12,40)).apply()}
+    var subtitleHeight:Int
+        get()=p.getInt("subtitleHeight",16)
+        set(v){p.edit().putInt("subtitleHeight",v.coerceIn(0,160)).apply()}
+    var subtitleFont:String
+        get()=p.getString("subtitleFont","sans-serif")?:"sans-serif"
+        set(v){p.edit().putString("subtitleFont",v).apply()}
+    var subtitleBackground:Boolean
+        get()=p.getBoolean("subtitleBackground",true)
+        set(v){p.edit().putBoolean("subtitleBackground",v).apply()}
     fun close(){historyWorker.shutdown()}
 
     var adblock: Boolean

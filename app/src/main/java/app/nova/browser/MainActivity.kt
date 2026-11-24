@@ -220,7 +220,7 @@ class MainActivity : AppCompatActivity() {
         when {
             t.startsWith("magnet:") -> openPlayer(t, emptyList(), "")
             t.startsWith("http://") || t.startsWith("https://") -> load(t)
-            t.contains(" ") || !t.contains(".") -> load("https://duckduckgo.com/?q=" + URLEncoder.encode(t, "UTF-8"))
+            t.contains(" ") || !t.contains(".") -> load(searchUrl(t))
             else -> load("https://$t")
         }
     }
@@ -580,12 +580,37 @@ class MainActivity : AppCompatActivity() {
                 AlertDialog.Builder(this).setTitle(tr("Clear browsing data?", "مسح بيانات التصفح؟")).setNegativeButton(tr("Cancel", "إلغاء"),null).setPositiveButton(tr("Clear", "مسح")){_,_->store.clearHistory();Engine.get(this).storageController.clearData(StorageController.ClearFlags.ALL);d.dismiss()}.show()
             })
             title(l,tr("Browser", "المتصفح"))
-            item(l,tr("Search", "البحث"),"DuckDuckGo",{})
-            item(l,tr("Language", "اللغة"),tr("Follows device language", "تتبع لغة الجهاز"),{})
-            item(l,tr("Playback", "التشغيل"),tr("Sources, subtitles, quality and audio inside player", "المصادر والترجمات والجودة والصوت داخل المشغل"),{})
+            item(l,tr("Search", "البحث"),store.searchEngine,{d.dismiss();chooseSearchEngine()})
+            item(l,tr("Language", "اللغة"),tr("Choose app language", "اختيار لغة التطبيق"),{d.dismiss();chooseLanguage()})
+            item(l,tr("Playback", "التشغيل"),tr("Subtitle appearance", "مظهر الترجمة"),{d.dismiss();playbackSettings()})
             title(l,tr("About Nova", "عن نوفا"))
             item(l,tr("Nova · 0.3 development","نوفا · 0.3 قيد التطوير"),tr("In development. Not a finished browser.", "قيد التطوير. ليس متصفحاً مكتملاً بعد."),{})
         }
+    }
+
+    private fun searchUrl(query:String):String {
+        val encoded=URLEncoder.encode(query,"UTF-8")
+        return when(store.searchEngine){"Google"->"https://www.google.com/search?q=$encoded";"Bing"->"https://www.bing.com/search?q=$encoded";else->"https://duckduckgo.com/?q=$encoded"}
+    }
+    private fun chooseSearchEngine(){
+        val names=arrayOf("DuckDuckGo","Google","Bing")
+        AlertDialog.Builder(this).setTitle(tr("Search engine","محرك البحث")).setSingleChoiceItems(names,names.indexOf(store.searchEngine)){d,i->store.searchEngine=names[i];d.dismiss();showSettings()}.setNegativeButton(tr("Cancel","إلغاء"),null).show()
+    }
+    private fun chooseLanguage(){
+        val names=arrayOf(tr("Device language","لغة الجهاز"),"العربية","English")
+        AlertDialog.Builder(this).setTitle(tr("App language","لغة التطبيق")).setItems(names){_,i->androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(androidx.core.os.LocaleListCompat.forLanguageTags(arrayOf("","ar","en")[i]))}.setNegativeButton(tr("Cancel","إلغاء"),null).show()
+    }
+    private fun playbackSettings(){sheet{l,d->
+        title(l,tr("Subtitle appearance","مظهر الترجمة"))
+        item(l,tr("Font size","حجم الخط"),store.subtitleSize.toString(),{d.dismiss();subtitleNumber(true)})
+        item(l,tr("Height above bottom","الارتفاع عن أسفل الفيديو"),store.subtitleHeight.toString(),{d.dismiss();subtitleNumber(false)})
+        item(l,tr("Font","نوع الخط"),store.subtitleFont,{d.dismiss();AlertDialog.Builder(this).setTitle(tr("Font","نوع الخط")).setItems(arrayOf(tr("Default","افتراضي"),tr("Serif","ذو أطراف"),tr("Monospace","متساوي العرض"))){_,i->store.subtitleFont=arrayOf("sans-serif","serif","monospace")[i];playbackSettings()}.show()})
+        item(l,tr("Dark background","خلفية داكنة"),if(store.subtitleBackground)tr("On","مفعلة") else tr("Off","متوقفة"),{store.subtitleBackground=!store.subtitleBackground;d.dismiss();playbackSettings()})
+        item(l,tr("Reset subtitle style","استعادة مظهر الترجمة الافتراضي"),null,{store.subtitleSize=20;store.subtitleHeight=16;store.subtitleFont="sans-serif";store.subtitleBackground=true;d.dismiss();playbackSettings()})
+    }}
+    private fun subtitleNumber(size:Boolean){
+        val bar=SeekBar(this).apply{max=if(size)28 else 160;progress=if(size)store.subtitleSize-12 else store.subtitleHeight}
+        AlertDialog.Builder(this).setTitle(if(size)tr("Font size","حجم الخط") else tr("Height above bottom","الارتفاع عن أسفل الفيديو")).setView(bar).setPositiveButton(tr("Save","حفظ")){_,_->if(size)store.subtitleSize=bar.progress+12 else store.subtitleHeight=bar.progress;playbackSettings()}.setNegativeButton(tr("Cancel","إلغاء"),null).show()
     }
 
     private fun homeHtml(): String {
@@ -593,7 +618,7 @@ class MainActivity : AppCompatActivity() {
         val hint=tr("Search the web or enter a site", "ابحث أو أدخل عنوان موقع")
         return """<!doctype html><html lang='${if(resources.configuration.locales[0].language=="ar")"ar" else "en"}' dir='auto'><meta name='viewport' content='width=device-width,initial-scale=1'><style>
         *{box-sizing:border-box}body{margin:0;background:#111018;color:#f3f1fa;font-family:sans-serif;padding:64px 24px}small{color:#b5a7ff;letter-spacing:5px;font-size:15px}h1{font-size:32px;line-height:1.3;margin:20px 0 32px;font-weight:600}input{width:100%;border:1px solid #37333f;border-radius:18px;background:#201e29;color:#f3f1fa;font-size:15px;padding:18px}p{color:#9b97aa;line-height:1.7;font-size:13px;margin-top:28px}.orb{width:44px;height:44px;border:2px solid #b5a7ff;border-radius:15px;transform:rotate(-12deg);margin-bottom:28px}</style>
-        <div class='orb'></div><small>NOVA</small><h1>$title</h1><form action='https://duckduckgo.com/'><input name='q' placeholder='$hint'></form><p>${tr("Your browser and player, connected. Open a video, then use Play in Nova.", "المتصفح والمشغل في تجربة واحدة. افتح فيديو ثم اختر التشغيل في نوفا.")}</p></html>"""
+        <div class='orb'></div><small>NOVA</small><h1>$title</h1><form action='${when(store.searchEngine){"Google"->"https://www.google.com/search";"Bing"->"https://www.bing.com/search";else->"https://duckduckgo.com/"}}'><input name='q' placeholder='$hint'></form><p>${tr("Your browser and player, connected. Open a video, then use Play in Nova.", "المتصفح والمشغل في تجربة واحدة. افتح فيديو ثم اختر التشغيل في نوفا.")}</p></html>"""
     }
 
     private fun openPlayer(url: String, subs: List<String>, referer: String, tab: Tab? = null) {
