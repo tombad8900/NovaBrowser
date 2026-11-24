@@ -1,0 +1,53 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+      - name: Extract libtorrent native library for JVM tests
+        run: |
+          J=$(find ~/.gradle -name 'libtorrent4j-linux-*.jar' 2>/dev/null | head -1)
+          if [ -z "$J" ]; then gradle --no-daemon -q :app:dependencies --configuration debugUnitTestRuntimeClasspath >/dev/null || true; J=$(find ~/.gradle -name 'libtorrent4j-linux-*.jar' | head -1); fi
+          mkdir -p $HOME/nl && unzip -oq "$J" 'lib/x86_64/*' -d $HOME/nl
+          echo "NOVA_NATIVE_DIR=$HOME/nl/lib/x86_64" >> $GITHUB_ENV
+      - name: Unit tests (sniffer + torrent streaming against a local seeder)
+        id: tests
+        continue-on-error: true
+        run: gradle --no-daemon :app:testDebugUnitTest
+      - name: Build debug APK
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Name the APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk Nova-${{ github.ref_name }}.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nova-apk
+          path: Nova-*.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports
+          path: app/build/reports/tests
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TESTS: ${{ steps.tests.outcome }}
+        run: |
+          gh release create "${{ github.ref_name }}" Nova-*.apk --title "Nova ${{ github.ref_name }} (experimental)" --prerelease --notes "Experimental build. CI unit tests (link classifier + local-swarm torrent streaming): $TESTS. Not yet verified on a physical device. APK is debug-signed."
