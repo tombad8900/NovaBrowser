@@ -8,8 +8,8 @@ def dump():
 def bounds(n):return list(map(int,re.findall(r'\d+',n.attrib['bounds'])))
 def find(id):
  for n in dump().iter():
-  if n.attrib.get('resource-id','').endswith('/'+id) or n.attrib.get('content-desc')==id:return n
- raise RuntimeError('Missing transport '+id)
+  if n.attrib.get('resource-id','').endswith('/'+id) or n.attrib.get('content-desc')==id or n.attrib.get('text')==id:return n
+ shot('24-failed-lookup');raise RuntimeError('Missing transport '+id)
 def tap(id):
  n=find(id);b=bounds(n);adb('shell','input','tap',str((b[0]+b[2])//2),str((b[1]+b[3])//2));time.sleep(.5)
 def seconds():
