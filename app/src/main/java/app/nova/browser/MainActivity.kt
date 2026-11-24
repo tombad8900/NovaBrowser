@@ -173,6 +173,10 @@ class MainActivity : AppCompatActivity() {
         val tab = Tab(web)
         web.setBackgroundColor(bg)
         if (android.os.Build.VERSION.SDK_INT >= 29) web.isForceDarkAllowed = false
+        if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.FORCE_DARK))
+            androidx.webkit.WebSettingsCompat.setForceDark(web.settings, androidx.webkit.WebSettingsCompat.FORCE_DARK_OFF)
+        if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.ALGORITHMIC_DARKENING))
+            androidx.webkit.WebSettingsCompat.setAlgorithmicDarkeningAllowed(web.settings, false)
         web.settings.apply {
             javaScriptEnabled = true; domStorageEnabled = true; databaseEnabled = true
             mediaPlaybackRequiresUserGesture = false
