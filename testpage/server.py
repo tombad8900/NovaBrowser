@@ -19,6 +19,9 @@ class Handler(SimpleHTTPRequestHandler):
         if path=='/popup.html':
             self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers()
             self.wfile.write(b'<meta name=viewport content="width=device-width"><h2>Popup regression</h2><a target="_blank" href="/plain.html">Open safe tab</a><script>window.open("/plain.html");</script>');return
+        if path=='/caption.html':
+            self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers()
+            self.wfile.write(b'<meta name=viewport content="width=device-width"><title>Caption rendering</title><video width=260 controls><source src="/clip.mp4" type="video/mp4"><track src="/ar.vtt" kind="subtitles" srclang="ar" label="Arabic"></video>');return
         if path=='/lifetime.html':
             self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers()
             self.wfile.write(b'''<meta name=viewport content="width=device-width"><title>Capture lifetime</title><button onclick="let a=document.createElement('a');a.href='/clip.mp4';a.textContent='Video';document.body.appendChild(a)">Expose source</button><button onclick="document.querySelectorAll('a').forEach(a=>a.remove());history.pushState({},'','/lifetime.html?next=1')">Next document</button>''');return

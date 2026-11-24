@@ -82,7 +82,9 @@ jobs:
             (python3 testpage/server.py > /tmp/test-server.log 2>&1 &)
             sleep 2
             python3 testpage/source-lifetime-check.py
+            printf 'WEBVTT\n\n00:00:00.000 --> 00:02:00.000\nاختبار الترجمة العربية في نوفا\n' > testpage/ar.vtt
             python3 testpage/transport-check.py
+            python3 testpage/caption-style-check.py
       - name: Run on emulator
         if: inputs.transport_only != 'true'
         uses: reactivecircus/android-emulator-runner@v2

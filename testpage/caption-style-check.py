@@ -1,0 +1,14 @@
+"""Actual caption pixels at two persisted Nova styles, not source-page style inheritance."""
+import runpy,subprocess,time,xml.etree.ElementTree as E,re
+ui=runpy.run_path('testpage/ui-check.py');adb=ui['adb'];tap=ui['tap'];pkg='app.nova.browser.preview'
+def shot(n):open('shots/'+n+'.png','wb').write(adb('exec-out','screencap','-p'))
+def launch():
+ adb('shell','am','force-stop',pkg);adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/caption.html','--ez','testHoldControls','true',pkg)
+ tap('تشغيل في نوفا');time.sleep(4);tap('الترجمات');tap('العربية');time.sleep(2)
+launch();shot('30-caption-default');adb('shell','input','keyevent','KEYCODE_BACK')
+tap('القائمة');tap('الإعدادات');tap('التشغيل');tap('حجم الخط')
+# Native SeekBar receives keyboard input, not a hidden preference mutation.
+r=ui['snapshot']();bar=next(n for n in r.iter() if n.attrib.get('class')=='android.widget.SeekBar');b=list(map(int,re.findall(r'\d+',bar.attrib['bounds'])))
+adb('shell','input','tap',str(b[0]+(b[2]-b[0])//2),str((b[1]+b[3])//2));tap('حفظ');shot('31-caption-size-setting')
+adb('shell','input','keyevent','KEYCODE_BACK');launch();shot('32-caption-custom')
+open('shots/caption-preferences.xml','wb').write(adb('shell','run-as',pkg,'cat','shared_prefs/nova.xml'))
