@@ -125,9 +125,42 @@ class PlayerActivity : AppCompatActivity() {
         p.currentTracks.groups.filter{it.type==C.TRACK_TYPE_TEXT}.forEach{g ->for(i in 0 until g.length) if(g.isTrackSupported(i)) {
             val f=g.getTrackFormat(i); entries.add(Triple(f.label?:f.language?:tr("Subtitle ${entries.size+1}","ترجمة ${entries.size+1}"),g,i))
         }}
-        entries.sortedBy{if(it.first.contains("ar",true)||it.first.contains("عرب"))0 else 1}.forEach{(label,g,i)->rows.add(label to {p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT,false).setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup,i)).build()})}
-        rows.add(tr("Choose subtitle file","اختيار ملف ترجمة") to {subPicker.launch(arrayOf("*/*"))})
-        sheet(tr("Subtitles · Arabic first","الترجمات · العربية أولاً"),rows)
+        if(entries.isEmpty()) {
+            rows.add(tr("Choose subtitle file","اختيار ملف ترجمة") to {subPicker.launch(arrayOf("*/*"))})
+            sheet(tr("Subtitles","الترجمات"),rows);return
+        }
+        val dialog=android.app.Dialog(this)
+        val outer=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(20),dp(16),dp(20),dp(16));background=android.graphics.drawable.GradientDrawable().apply{setColor(0xF0101018.toInt());cornerRadius=dp(22).toFloat();setStroke(dp(1),0xFF35313F.toInt())}}
+        outer.addView(TextView(this).apply{text=tr("Subtitles","الترجمات");textSize=18f;setTextColor(white);setPadding(0,0,0,dp(16))})
+        val body=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
+        val languages=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+        val files=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(14),0,0,0)}
+        body.addView(ScrollView(this).apply{addView(languages)},LinearLayout.LayoutParams(dp(112),-1))
+        body.addView(ScrollView(this).apply{addView(files)},LinearLayout.LayoutParams(0,-1,1f))
+        outer.addView(body,LinearLayout.LayoutParams(-1,0,1f))
+        fun language(e:Triple<String,Tracks.Group,Int>):String {
+            val f=e.second.getTrackFormat(e.third)
+            return f.language?.takeIf{it!="und"}?.substringBefore('-') ?: if(e.first.contains("عرب")||e.first.contains("arab",true))"ar" else "und"
+        }
+        val groups=entries.groupBy{language(it)}.toSortedMap(compareBy<String>{if(it=="ar")"" else it})
+        val chips=mutableListOf<Pair<String,TextView>>()
+        fun display(code:String) = when(code){"ar"->"العربية";"en"->"English";"und"->tr("Other","أخرى");else->java.util.Locale.forLanguageTag(code).getDisplayLanguage(java.util.Locale.forLanguageTag(code)).ifBlank{code}}
+        fun select(code:String){
+            files.removeAllViews()
+            chips.forEach{(k,v)->v.setTextColor(if(k==code)accent else muted);v.background=android.graphics.drawable.GradientDrawable().apply{setColor(if(k==code)0xFF30283F.toInt() else 0xFF1C1B24.toInt());cornerRadius=dp(12).toFloat()}}
+            groups[code].orEmpty().forEach{(label,g,i)->
+                val active=g.isTrackSelected(i)&&!p.trackSelectionParameters.disabledTrackTypes.contains(C.TRACK_TYPE_TEXT)
+                files.addView(TextView(this).apply{text=(if(active)"✓  " else "")+label;setTextColor(if(active)accent else white);textSize=14f;maxLines=2;ellipsize=android.text.TextUtils.TruncateAt.END;setPadding(dp(10),dp(15),dp(10),dp(15));setOnClickListener{p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT,false).setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup,i)).build();dialog.dismiss()}},LinearLayout.LayoutParams(-1,-2))
+            }
+        }
+        languages.addView(button(tr("Off","إيقاف")){p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT,true).build();dialog.dismiss()},LinearLayout.LayoutParams(-1,dp(44)))
+        groups.keys.forEach{code->val chip=button(display(code)){select(code)};languages.addView(chip,LinearLayout.LayoutParams(-1,dp(44)).apply{bottomMargin=dp(6)});chips.add(code to chip)}
+        outer.addView(button(tr("Choose subtitle file","اختيار ملف ترجمة")){dialog.dismiss();subPicker.launch(arrayOf("*/*"))},LinearLayout.LayoutParams(-1,dp(44)))
+        dialog.setContentView(outer);dialog.window?.setBackgroundDrawableResource(android.R.color.transparent);dialog.show()
+        val landscape=resources.configuration.orientation==2
+        dialog.window?.setGravity(if(landscape)Gravity.END or Gravity.CENTER_VERTICAL else Gravity.CENTER)
+        dialog.window?.setLayout(minOf(dp(560),resources.displayMetrics.widthPixels-dp(24)),minOf(dp(340),resources.displayMetrics.heightPixels-dp(64)))
+        select(if(groups.containsKey("ar"))"ar" else groups.keys.first())
     }
     private fun audio() {
         val p=player?:return;val rows=mutableListOf<Pair<String,()->Unit>>()
