@@ -213,7 +213,8 @@ class MainActivity : AppCompatActivity() {
                             if (tab.contexts.size >= 300) tab.contexts.remove(tab.contexts.keys.first())
                             tab.contexts[sourceKey(u)] = context
                             if (kind == "CONTEXT") return@post
-                            val source = PlaybackSource(url=u,kind=kind,mime=ct,context=context,evidence="network")
+                            val arabic = Regex("(?i)([/_.?&=-])(ar|ara|arabic)([/_.?&=-]|$)").containsMatchIn(u)
+                            val source = PlaybackSource(url=u,kind=kind,mime=ct,context=context,evidence="network",language=if(arabic)"ar" else "und",label=if(arabic)"العربية" else "")
                             tab.resources[sourceKey(u)] = source
                             addFound(tab, Found(u, kind, "network"))
                         }
