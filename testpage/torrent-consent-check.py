@@ -13,10 +13,10 @@ subprocess.check_call(['adb','shell','input','keyevent','KEYCODE_BACK'])
 import re
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=25)
 def root():
- adb('shell','uiautomator','dump','/sdcard/switch.xml');return E.fromstring(adb('shell','cat','/sdcard/switch.xml'))
+ adb('shell','uiautomator','dump','/sdcard/switch.xml');raw=adb('shell','cat','/sdcard/switch.xml');open('shots/switch.xml','wb').write(raw);open('shots/switch-state.png','wb').write(adb('exec-out','screencap','-p'));return E.fromstring(raw)
 def tap(label):
  for n in root().iter():
-  if n.attrib.get('text','').removeprefix('✓  ')==label or n.attrib.get('content-desc')==label:
+  if n.attrib.get('text','').removeprefix('✓  ').strip()==label.strip() or n.attrib.get('content-desc')==label:
    b=list(map(int,re.findall(r'\d+',n.attrib['bounds'])));adb('shell','input','tap',str((b[0]+b[2])//2),str((b[1]+b[3])//2));return
  raise RuntimeError('Missing '+label)
 adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/switch.html','app.nova.browser');time.sleep(5)
