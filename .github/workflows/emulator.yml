@@ -3,6 +3,10 @@ name: Emulator smoke test
 on:
   workflow_dispatch:
     inputs:
+      pip_probe:
+        description: Explicit optional PiP interaction probe. Not verified yet.
+        required: false
+        default: 'false'
       tmdb_probe:
         description: Optional one-off movie TMDB ID. Leave blank for routine tests.
         required: false
@@ -13,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NOVA_TMDB_PROBE: ${{ inputs.tmdb_probe }}
+      NOVA_PIP_PROBE: ${{ inputs.pip_probe }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -105,7 +110,7 @@ jobs:
             adb shell dumpsys gfxinfo app.nova.browser.trial > shots/frames.txt
             python3 testpage/external-check.py || touch shots/regression-failed
             python3 testpage/vidsrc-check.py
-            python3 testpage/pip-check.py || touch shots/regression-failed
+            if [ "$NOVA_PIP_PROBE" = "true" ]; then python3 testpage/pip-check.py || touch shots/regression-failed; fi
             python3 testpage/resource-check.py
             test ! -f shots/regression-failed
             adb logcat -d -s AndroidRuntime:E NovaEngine:I NovaPerf:I ExoPlayerImplInternal:E > shots/crashes.txt

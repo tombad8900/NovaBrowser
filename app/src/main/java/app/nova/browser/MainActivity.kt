@@ -64,6 +64,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tabBtn: TextView
     private lateinit var fullscreenHost: FrameLayout
     private val tabs = mutableListOf<Tab>()
+    private val detectorAttachments=SessionAttachments<Tab>()
     private var cur: Tab? = null
     private lateinit var store: Store
     private val ui = Handler(Looper.getMainLooper())
@@ -109,7 +110,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         store = Store(this)
         Engine.get(this)
-        Engine.whenReady { ext -> tabs.forEach { attachExt(it, ext) } }
+        Engine.whenReady { ext -> if(!isDestroyed&&!isFinishing)detectorAttachments.ready{attachExt(it,ext)} }
         buildUi()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() { goBack() }
@@ -385,7 +386,7 @@ class MainActivity : AppCompatActivity() {
             dialog.window?.setLayout(-1,dp(520))
         }
         tabs.add(tab)
-        Engine.ext?.let { attachExt(tab, it) }
+        detectorAttachments.register(tab)
         if (switchTo) switchTo(tab)
         if (session == null) {
             if (url != null) s.load(GeckoSession.Loader().uri(url))
@@ -422,6 +423,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun closeTab(t: Tab) {
         val i = tabs.indexOf(t)
+        detectorAttachments.unregister(t)
         tabs.remove(t)
         if (cur === t) geckoView.releaseSession()
         t.session.close()
@@ -588,5 +590,5 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause(){super.onPause();cur?.session?.setActive(false);ui.removeCallbacks(heartbeat);lastHeartbeat=0}
     override fun onResume(){super.onResume();cur?.session?.setActive(true);ui.removeCallbacks(heartbeat);ui.post(heartbeat)}
-    override fun onDestroy() { tabs.forEach { it.session.close() };store.close(); super.onDestroy() }
+    override fun onDestroy() { detectorAttachments.clear();tabs.forEach { it.session.close() };store.close(); super.onDestroy() }
 }
