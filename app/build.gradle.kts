@@ -61,4 +61,4 @@ kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarg
 // Compile against API 37 and validate runtime on the emulator; migrate to AGP 9 before production.
 tasks.configureEach { if (name.startsWith("check") && name.endsWith("AarMetadata")) enabled = false }
 
-dependencies { implementation("androidx.media3:media3-datasource-okhttp:1.11.1") }
+dependencies { implementation("androidx.media3:media3-datasource-okhttp:1.3.1") }

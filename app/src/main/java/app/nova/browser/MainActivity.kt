@@ -39,6 +39,8 @@ class MainActivity : AppCompatActivity() {
         var title = ""
         var url = ""
         var desktop = false
+        var generation = 0L
+        var loadStarted = 0L
         var canBack = false
         var canFwd = false
     }
@@ -72,8 +74,8 @@ class MainActivity : AppCompatActivity() {
                 tr("Tap to change and reload. Some sites need exceptions.", "اضغط للتغيير وإعادة التحميل. بعض المواقع تحتاج استثناءً."), {
                     d.dismiss(); t.session.settings.useTrackingProtection=store.toggleProtection(host);t.session.reload()
                 })
-            item(l, tr("Tracker protection, isolated cookies and GPC", "حماية التتبع وعزل ملفات الارتباط وإشارة الخصوصية"),
-                tr("Full ad filtering is being verified, not promised.", "الحجب الكامل للإعلانات قيد التحقق وليس مضموناً."), {})
+            item(l, tr("Tracking protection for this site", "حماية التتبع لهذا الموقع"),
+                tr("Cookie isolation and GPC remain on globally. Full ad filtering is being verified.", "عزل ملفات الارتباط وإشارة الخصوصية يظلان مفعلين. الحجب الكامل للإعلانات قيد التحقق."), {})
         }
     }
 
@@ -203,6 +205,7 @@ class MainActivity : AppCompatActivity() {
                     "resourceRef" -> {
                         if (message.optString("page").substringBefore('#') != tab.url.substringBefore('#')) return null
                         val resource = Engine.observations.remove(message.optString("token")) ?: return null
+                        val generation = tab.generation
                         val u = resource.optString("url")
                         val ct = resource.optString("ct")
                         val h = resource.optJSONObject("headers") ?: JSONObject()
@@ -210,6 +213,7 @@ class MainActivity : AppCompatActivity() {
                         val context = RequestContext(u, headers, resource.optLong("time", System.currentTimeMillis()))
                         val kind = if (resource.optBoolean("segment")) "CONTEXT" else Sniffer.classifyMime(u, ct) ?: "CONTEXT"
                         ui.post {
+                            if (generation != tab.generation) return@post
                             if (tab.contexts.size >= 300) tab.contexts.remove(tab.contexts.keys.first())
                             tab.contexts[sourceKey(u)] = context
                             if (kind == "CONTEXT") return@post
@@ -224,10 +228,12 @@ class MainActivity : AppCompatActivity() {
                         Sniffer.classifyMime(u, message.optString("ct"))?.let { k -> ui.post { addFound(tab, Found(u, k, "network")) } }
                     }
                     "scan" -> {
+                        if(message.optString("page").substringBefore('#') != tab.url.substringBefore('#')) return null
+                        val generation=tab.generation
                         val arr = message.optJSONArray("urls")
                         if (arr != null) {
                             val f = Sniffer.foundFromUrls((0 until arr.length()).map { arr.getString(it) }, "page")
-                            ui.post { f.forEach { addFound(tab, it) } }
+                            ui.post { if(generation==tab.generation) f.forEach { addFound(tab, it) } }
                         }
                     }
                 }
@@ -238,19 +244,21 @@ class MainActivity : AppCompatActivity() {
 
     private fun newTab(url: String?, switchTo: Boolean = true, session: GeckoSession? = null): Tab {
         if (tabs.size >= 8) {
-            val victim = tabs.firstOrNull { it !== cur } ?: tabs.first()
-            closeTab(victim)
+            Toast.makeText(this,tr("Close a tab before opening another (8 tab limit)","أغلق علامة تبويب قبل فتح أخرى (الحد ٨)"),Toast.LENGTH_LONG).show()
+            session?.close()
+            return cur ?: tabs.first()
         }
         val s = session ?: GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).useTrackingProtection(true).build())
         val tab = Tab(s)
         s.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onPageStart(session: GeckoSession, u: String) {
-                loadingStarted = android.os.SystemClock.elapsedRealtime()
+                tab.loadStarted = android.os.SystemClock.elapsedRealtime()
+                tab.generation++
                 tab.found.clear(); tab.resources.clear(); tab.contexts.clear(); tab.url = u
                 if (cur === tab) { refreshCounts(); if (!urlBar.hasFocus()) urlBar.setText(shown(u)) }
             }
             override fun onPageStop(session: GeckoSession, success: Boolean) {
-                android.util.Log.i("NovaPerf", "Page stop success=$success elapsedMs=${android.os.SystemClock.elapsedRealtime()-loadingStarted} tabs=${tabs.size} captures=${tab.found.size}")
+                android.util.Log.i("NovaPerf", "Page stop success=$success elapsedMs=${android.os.SystemClock.elapsedRealtime()-tab.loadStarted} tabs=${tabs.size} captures=${tab.found.size}")
                 if (success && tab.url.startsWith("http")) store.addHistory(tab.title, tab.url)
                 if (!success && cur === tab) Toast.makeText(this@MainActivity,tr("Page couldn't finish loading. Reload or check site protection.","تعذر إكمال تحميل الصفحة. أعد التحميل أو راجع حماية الموقع."),Toast.LENGTH_LONG).show()
             }
@@ -269,7 +277,12 @@ class MainActivity : AppCompatActivity() {
             override fun onLoadRequest(session: GeckoSession, r: GeckoSession.NavigationDelegate.LoadRequest): GeckoResult<AllowOrDeny>? {
                 val u = r.uri
                 if (u.startsWith("magnet:")) { ui.post { openPlayer(u, emptyList(), "") }; return GeckoResult.deny() }
-                if (u.startsWith("http://") || u.startsWith("https://") || u.startsWith("about:") || u.startsWith("data:") || u.startsWith("blob:")) return GeckoResult.allow()
+                if (u.startsWith("http://") || u.startsWith("https://")) {
+                    Uri.parse(u).host?.let { session.settings.useTrackingProtection=store.protection(it) }
+                    if(r.target==GeckoSession.NavigationDelegate.TARGET_WINDOW_NEW && !r.hasUserGesture) return GeckoResult.deny()
+                    return GeckoResult.allow()
+                }
+                if (u.startsWith("about:") || u.startsWith("data:") || u.startsWith("blob:")) return GeckoResult.allow()
                 // only hand a few safe schemes to other apps, and only after a real tap
                 val sch = Uri.parse(u).scheme ?: ""
                 if (r.hasUserGesture && sch in setOf("mailto", "tel", "sms")) {
@@ -282,6 +295,7 @@ class MainActivity : AppCompatActivity() {
                 return GeckoResult.fromValue("data:text/html;charset=utf-8;base64,"+android.util.Base64.encodeToString(html.toByteArray(Charsets.UTF_8),android.util.Base64.NO_WRAP))
             }
             override fun onNewSession(session: GeckoSession, uri: String): GeckoResult<GeckoSession>? {
+                if(tabs.size >= 8) return GeckoResult.fromValue(null)
                 val ns = GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).useTrackingProtection(true).build())
                 ui.post { newTab(null, true, ns) }
                 return GeckoResult.fromValue(ns)

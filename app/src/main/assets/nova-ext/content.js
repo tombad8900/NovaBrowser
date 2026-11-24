@@ -1,27 +1,33 @@
-// Runs in every page and frame. Only the top frame forwards network hits; every frame scans its DOM.
-function send(m) { try { browser.runtime.sendNativeMessage("nova", m); } catch (e) {} }
-var isTop = (window === window.top);
-function fwd(item) { if (isTop && item.token) send({ t: "resourceRef", token: item.token, page: location.href }); }
-browser.runtime.onMessage.addListener(function (msg) {
-  if (msg && msg.nova === "resource") fwd(msg);
-});
-if (isTop) browser.runtime.sendMessage({ nova: "hello" }).then(function(list){(list||[]).forEach(fwd);}).catch(function(){});
-var re = /https?:\/\/[^\s"'<>\\)]+\.(?:m3u8|mpd|mp4|webm|mkv|vtt|srt|ass|ttml)(?:\?[^\s"'<>\\)]*)?/gi;
+// Content scripts never receive request headers. Network references are opaque.
+function send(m) { try { browser.runtime.sendNativeMessage('nova', m).catch(()=>{}); } catch (_) {} }
+const isTop = window === window.top;
+let epoch=null;
+function fwd(item) { if (isTop && item.token && item.epoch===epoch) send({t:'resourceRef',token:item.token,page:location.href}); }
+browser.runtime.onMessage.addListener(m => { if(m && m.nova==='resource') fwd(m); });
+if(isTop) browser.runtime.sendMessage({nova:'hello'}).then(result=>{epoch=result.epoch;(result.items||[]).forEach(fwd);}).catch(()=>{});
+const mediaPattern=/https?:\/\/[^\s"'<>\\)]+\.(?:m3u8|mpd|mp4|webm|mkv|vtt|srt|ass|ttml)(?:\?[^\s"'<>\\)]*)?/gi;
+let timer=0;
+const sent=new Set();
 function scan() {
+  timer=0;
   try {
-    var out = [];
-    function add(u) { if (u && typeof u === "string" && out.length < 300) out.push(u); }
-    document.querySelectorAll("video,audio,source,track,a[href],iframe,embed").forEach(function (e) {
-      add(e.currentSrc || e.src || e.href);
-    });
-    var h = (document.documentElement ? document.documentElement.innerHTML.slice(0, 350000) : "").replace(/\\\//g, "/").replace(/&amp;/g, "&");
-    var m, n = 0;
-    re.lastIndex = 0;
-    while ((m = re.exec(h)) && n++ < 300) add(m[0]);
-    (h.match(/magnet:\?xt=urn:btih:[^\s"'<>]+/gi) || []).forEach(add);
-    if (out.length) send({ t: "scan", urls: out });
-  } catch (e) {}
+    const out=[];
+    function add(u) {if(typeof u==='string' && /^https?:|^magnet:/i.test(u) && !sent.has(u) && out.length<150){out.push(u);sent.add(u);}}
+    const nodes=document.querySelectorAll('video,audio,source,track,a[href],iframe,embed');
+    for(let i=0;i<Math.min(nodes.length,500);i++) add(nodes[i].currentSrc||nodes[i].src||nodes[i].href);
+    // Walk a bounded set of script text rather than serialize the entire DOM.
+    let budget=200000;
+    const scripts=document.scripts;
+    for(let i=0;i<Math.min(scripts.length,50)&&budget>0;i++) {
+      let h=(scripts[i].textContent||'').slice(0,budget).replace(/\\\//g,'/').replace(/&amp;/g,'&');budget-=h.length;
+      mediaPattern.lastIndex=0;let m,n=0;
+      while((m=mediaPattern.exec(h))&&n++<150)add(m[0]);
+    }
+    if(out.length)send({t:'scan',urls:out,page:location.href});
+    if(sent.size>600)sent.clear();
+  }catch(_){}
 }
-document.addEventListener("play", function () { setTimeout(scan, 300); }, true);
-document.addEventListener("loadedmetadata", function () { setTimeout(scan, 300); }, true);
-window.addEventListener("load", function () { setTimeout(scan, 500); setTimeout(scan, 3000); setTimeout(scan, 8000); });
+function queue(){if(!timer)timer=setTimeout(scan,350);}
+document.addEventListener('play',queue,true);
+document.addEventListener('loadedmetadata',queue,true);
+window.addEventListener('load',()=>{queue();setTimeout(queue,3000);setTimeout(queue,8000);});

@@ -43,7 +43,9 @@ class PlayerActivity : AppCompatActivity() {
     private fun tr(en:String, arabic:String)=if(ar()) arabic else en
     private val subPicker=registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let {
-            extraSubs.add(PlaybackSource(url=it.toString(),kind="SUB",mime="text/vtt",label=tr("Local subtitle","ترجمة محلية")))
+            val displayName = contentResolver.query(it, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if(c.moveToFirst()) c.getString(0) else "" }.orEmpty()
+            val mime = Sniffer.mimeForSub(displayName)
+            extraSubs.add(PlaybackSource(url=it.toString(),kind="SUB",mime=mime,label=displayName.ifBlank{tr("Local subtitle","ترجمة محلية")}))
             play(sourceIndex,player?.currentPosition?:0)
         }
     }
@@ -92,7 +94,7 @@ class PlayerActivity : AppCompatActivity() {
     private fun sources() {
         sheet(tr("Playback sources","مصادر التشغيل"),session!!.sources.mapIndexed{i,s ->
             val host=runCatching{Uri.parse(s.url).host}.getOrNull().orEmpty()
-            (if(i==sourceIndex)"✓  " else "")+s.kind+" · "+host to {play(i,player?.currentPosition?:0)}
+            ((if(i==sourceIndex)"✓  " else "")+s.kind+" · "+host) to {play(i,player?.currentPosition?:0)}
         })
     }
     private fun quality() {
@@ -160,6 +162,7 @@ class PlayerActivity : AppCompatActivity() {
             override fun onPlaybackStateChanged(state:Int){if(state==Player.STATE_READY)status.visibility=View.GONE}
             override fun onPlayerError(e:PlaybackException){status.text=when(e.errorCode){PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS->tr("The server refused this request. Return to the page or choose another source.","رفض الخادم طلب التشغيل. ارجع للصفحة أو اختر مصدراً آخر.");PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED->tr("This response is not a valid stream. Choose another source or return to the page.","الاستجابة ليست بثاً صالحاً. اختر مصدراً آخر أو ارجع للصفحة.");else->tr("Couldn't play this source. Tap here to retry, or choose Sources.","تعذر تشغيل المصدر. اضغط هنا للمحاولة أو اختر المصادر.")};status.visibility=View.VISIBLE;status.setOnClickListener{play(sourceIndex,player?.currentPosition?:0)}}
         })
+        p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setPreferredTextLanguage("ar").build()
         pv.player=p;player=p;p.setMediaItem(item.build(),position);p.setPlaybackSpeed(speed);p.prepare();p.playWhenReady=true
     }
     override fun onSaveInstanceState(out:Bundle){out.putInt("source",sourceIndex);out.putLong("position",player?.currentPosition?:0);super.onSaveInstanceState(out)}
