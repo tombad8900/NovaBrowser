@@ -1,0 +1,53 @@
+name: Transport touch regression
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        required: true
+jobs:
+  controls:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reuse exact successful Build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN: ${{ inputs.build_run }}
+          REPO: ${{ github.repository }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os,json,urllib.request
+          run=os.environ['BUILD_RUN']
+          if not run.isdigit():raise SystemExit('Invalid run')
+          r=urllib.request.Request('https://api.github.com/repos/'+os.environ['REPO']+'/actions/runs/'+run,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+          d=json.load(urllib.request.urlopen(r))
+          if d.get('conclusion')!='success' or d.get('name')!='Build':raise SystemExit('Build not successful')
+          os.makedirs('shots',exist_ok=True)
+          open('shots/build-evidence.json','w').write(json.dumps({'run':run,'apkCommit':d['head_sha'],'testCommit':os.environ['EXPECTED_SHA']}))
+          PY
+          gh run download "$BUILD_RUN" --repo "$REPO" --name Nova-apk --dir reused-apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          script: |
+            adb install -r reused-apk/*x86_64-emulator.apk
+            ffmpeg -loglevel error -f lavfi -i testsrc=duration=120:size=320x240:rate=15 -f lavfi -i sine=duration=120 -pix_fmt yuv420p -c:v libx264 -c:a aac testpage/clip.mp4
+            python3 testpage/server.py > /tmp/test-server.log 2>&1 &
+            sleep 2
+            python3 testpage/transport-check.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: transport-evidence
+          path: shots

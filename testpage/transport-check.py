@@ -4,7 +4,7 @@ pkg='app.nova.browser.trial'
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=30)
 def dump():
  adb('shell','uiautomator','dump','/sdcard/transport.xml')
- return E.fromstring(adb('shell','cat','/sdcard/transport.xml'))
+ raw=adb('shell','cat','/sdcard/transport.xml');open('shots/transport-last.xml','wb').write(raw);return E.fromstring(raw)
 def bounds(n):return list(map(int,re.findall(r'\d+',n.attrib['bounds'])))
 def find(id):
  for n in dump().iter():
@@ -31,7 +31,7 @@ for rtl in [0,1]:
   after=find('exo_play_pause').attrib.get('content-desc','')
   if pause==after:raise RuntimeError('Play/pause click did not change state')
   # Ensure paused before time delta assertions.
-  if 'Pause' in after:tap('exo_play_pause')
+  if 'Pause' in after or 'إيقاف' in after:tap('exo_play_pause')
   before=seconds();time.sleep(1);assert abs(seconds()-before)<=1,'Pause did not stop timeline'
   tap('exo_ffwd');forward=seconds();assert abs(forward-before-10)<=1,(before,forward)
   tap('exo_rew');back=seconds();assert abs(back-before)<=1,(before,back)
