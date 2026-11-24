@@ -9,10 +9,14 @@ def click(node):
 adb('shell','am','force-stop','app.nova.browser');adb('logcat','-c')
 adb('shell','am','start','-a','android.intent.action.VIEW','-d','https://vidsrc.sh/embed/movie/tt1300854','app.nova.browser');time.sleep(20)
 root=snap('24-vidsrc-page')
+played=False
 for n in root.iter():
  label=(n.attrib.get('text','')+' '+n.attrib.get('content-desc','')).strip().lower()
  if label in ['play','play video','تشغيل']:
-  click(n);time.sleep(12);break
+  click(n);played=True;time.sleep(12);break
+if not played:
+ # Actual inspected phone screenshot: the player's unlabeled triangle is at160,264.
+ adb('shell','input','tap','160','264');time.sleep(20)
 root=snap('25-vidsrc-after-play')
 for n in root.iter():
  label=(n.attrib.get('text','')+' '+n.attrib.get('content-desc','')).strip().lower()
