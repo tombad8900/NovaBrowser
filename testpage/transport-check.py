@@ -24,7 +24,9 @@ def shot(name):open('shots/'+name+'.png','wb').write(adb('exec-out','screencap',
 results=[]
 for rtl in [0,1]:
  if rtl:
+  adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/plain.html',pkg);time.sleep(4)
   tap('Menu');tap('Settings');tap('Language');tap('العربية');time.sleep(4)
+  tap('القائمة');tap('الإعدادات');shot('25-arabic-settings');tap('التشغيل');shot('26-arabic-subtitle-settings');adb('shell','input','keyevent','KEYCODE_BACK')
  adb('shell','am','force-stop',pkg)
  adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/switch.html','--ez','testHoldControls','true',pkg);time.sleep(6)
  tap('تشغيل في نوفا' if rtl else 'Play in Nova');time.sleep(4)

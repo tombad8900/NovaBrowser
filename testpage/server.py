@@ -19,6 +19,9 @@ class Handler(SimpleHTTPRequestHandler):
         if path=='/popup.html':
             self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers()
             self.wfile.write(b'<meta name=viewport content="width=device-width"><h2>Popup regression</h2><a target="_blank" href="/plain.html">Open safe tab</a><script>window.open("/plain.html");</script>');return
+        if path=='/lifetime.html':
+            self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers()
+            self.wfile.write(b'''<meta name=viewport content="width=device-width"><title>Capture lifetime</title><button onclick="let a=document.createElement('a');a.href='/clip.mp4';a.textContent='Video';document.body.appendChild(a)">Expose source</button><button onclick="document.querySelectorAll('a').forEach(a=>a.remove());history.pushState({},'','/lifetime.html?next=1')">Next document</button>''');return
         if path=='/switch.html':
             self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers()
             self.wfile.write(b'<title>Source switch consent regression</title><h2>Source switch consent regression</h2><a href="/wrapper?url=http%3A%2F%2F10.0.2.2%3A8000%2Fclip.mp4">Wrapped video hint</a><a href="magnet:?xt=urn:btih:0123456789012345678901234567890123456789">Torrent</a>');return
