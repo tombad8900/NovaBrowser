@@ -44,7 +44,16 @@ jobs:
             **/hs_err_pid*.log
             app/build/test-results
           if-no-files-found: ignore
+      - name: Restore stable Android signing identity
+        env:
+          NOVA_SIGNING_KEYSTORE_B64: ${{ secrets.NOVA_SIGNING_KEYSTORE_B64 }}
+        run: |
+          test -n "$NOVA_SIGNING_KEYSTORE_B64"
+          printf '%s' "$NOVA_SIGNING_KEYSTORE_B64" | base64 -d > nova-signing.p12
+          chmod 600 nova-signing.p12
       - name: Build debug APK
+        env:
+          NOVA_SIGNING_PASSWORD: ${{ secrets.NOVA_SIGNING_PASSWORD }}
         run: gradle --no-daemon --stacktrace :app:assembleArm64Debug :app:assembleX64Debug
       - name: Name the APK
         run: |

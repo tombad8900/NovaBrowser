@@ -17,10 +17,19 @@ android {
         create("arm64") { dimension = "abi"; ndk { abiFilters += listOf("arm64-v8a") } }
         create("x64") { dimension = "abi"; ndk { abiFilters += listOf("x86_64") } }
     }
+    signingConfigs {
+        create("novaStable") {
+            storeFile = rootProject.file("nova-signing.p12")
+            storePassword = System.getenv("NOVA_SIGNING_PASSWORD")
+            keyAlias = "nova"
+            keyPassword = System.getenv("NOVA_SIGNING_PASSWORD")
+        }
+    }
     buildTypes {
+        debug { if(System.getenv("NOVA_SIGNING_PASSWORD")!=null) signingConfig=signingConfigs.getByName("novaStable") }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if(System.getenv("NOVA_SIGNING_PASSWORD")!=null)signingConfigs.getByName("novaStable") else signingConfigs.getByName("debug")
         }
     }
     compileOptions {
