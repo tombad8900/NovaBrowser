@@ -12,6 +12,7 @@ pkg='app.nova.browser.trial'
 adb('shell','am','force-stop',pkg)
 adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/switch.html',pkg);time.sleep(8)
 tap('Play in Nova');time.sleep(3)
+adb('shell','input','keyevent','KEYCODE_MEDIA_PAUSE')
 # At this point ready controls may have timed out; reveal then immediately tap the
 # inspected More icon at291,608, without spending multiple UI dumps on its6s timer.
 adb('shell','input','tap','160','280');time.sleep(.15)
