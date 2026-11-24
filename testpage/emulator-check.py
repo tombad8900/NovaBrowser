@@ -1,6 +1,6 @@
 import subprocess,xml.etree.ElementTree as ET,re,time,os
 os.makedirs('shots',exist_ok=True)
-def adb(*a):return subprocess.check_output(['adb',*a])
+def adb(*a):return subprocess.check_output(['adb',*a],timeout=20)
 def shot(name):open('shots/'+name+'.png','wb').write(adb('exec-out','screencap','-p'))
 def dump():
  adb('shell','uiautomator','dump','/sdcard/current.xml');return ET.fromstring(adb('shell','cat','/sdcard/current.xml'))
