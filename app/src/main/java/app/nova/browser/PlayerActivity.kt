@@ -73,10 +73,10 @@ class PlayerActivity : AppCompatActivity() {
         pv.apply {controllerShowTimeoutMs=6000;setShowSubtitleButton(false);setShowRewindButton(true);setShowFastForwardButton(true)}
         root.addView(pv,FrameLayout.LayoutParams(-1,-1))
         val top=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; setPadding(dp(12),dp(16),dp(12),dp(8));background=android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(0xE610101A.toInt(),0x0010101A)) }
-        top.addView(button("‹") {finish()}.apply{text="";setCompoundDrawablesWithIntrinsicBounds(R.drawable.nova_back,0,0,0);setPadding(dp(10),0,0,0)},LinearLayout.LayoutParams(dp(48),dp(44)))
+        top.addView(button("‹") {finish()}.apply{text="";contentDescription=tr("Back","رجوع");setCompoundDrawablesWithIntrinsicBounds(R.drawable.nova_back,0,0,0);setPadding(dp(10),0,0,0)},LinearLayout.LayoutParams(dp(48),dp(44)))
         name=TextView(this).apply {text=session!!.title;setTextColor(white);textSize=19f;typeface=android.graphics.Typeface.create("sans-serif-medium",0);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END}
         top.addView(name,LinearLayout.LayoutParams(0,dp(44),1f))
-        top.addView(button("↻") { requestedOrientation=if(resources.configuration.orientation==2) ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE }.apply{text="";contentDescription="Rotate";setCompoundDrawablesWithIntrinsicBounds(R.drawable.nova_rotate,0,0,0);setPadding(dp(10),0,0,0)},LinearLayout.LayoutParams(dp(48),dp(44)))
+        top.addView(button("↻") { requestedOrientation=if(resources.configuration.orientation==2) ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE }.apply{text="";contentDescription=tr("Rotate","تدوير الشاشة");setCompoundDrawablesWithIntrinsicBounds(R.drawable.nova_rotate,0,0,0);setPadding(dp(10),0,0,0)},LinearLayout.LayoutParams(dp(48),dp(44)))
         topBar=top
         root.addView(top,FrameLayout.LayoutParams(-1,-2,Gravity.TOP))
         actions=LinearLayout(this).apply {gravity=Gravity.CENTER;setPadding(dp(8),dp(4),dp(8),dp(8));background=android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.BOTTOM_TOP,intArrayOf(0xD510101A.toInt(),0x0010101A))}
@@ -110,10 +110,18 @@ class PlayerActivity : AppCompatActivity() {
         if(resources.configuration.orientation==2){d.window?.setBackgroundDrawableResource(android.R.color.transparent);d.window?.setGravity(Gravity.END or Gravity.BOTTOM);d.window?.attributes=d.window?.attributes?.apply{y=dp(108);x=dp(16)};d.window?.setLayout(minOf(dp(330),resources.displayMetrics.widthPixels-dp(80)),minOf(dp(200),resources.displayMetrics.heightPixels-dp(124)))}
         d.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)?.background=android.graphics.drawable.GradientDrawable().apply{setColor(0xE6101018.toInt());cornerRadii=floatArrayOf(dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),0f,0f,0f,0f)}
     }
+    private fun sourceKind(kind:String)=if(!ar())kind else when(kind){"VIDEO"->"فيديو";"AUDIO"->"صوت";"TORRENT"->"تورنت";"SUB"->"ترجمة";else->kind}
+    private fun torrentStatus(raw:String)=raw
+        .replace("Finding peers and metadata...", "جارٍ البحث عن المشاركين وبيانات التورنت…")
+        .replace("DHT nodes:", "عُقد الشبكة:")
+        .replace("Buffering ", "جارٍ التخزين المؤقت: ")
+        .replace("start pieces", "من أجزاء البداية")
+        .replace("peers ", "المشاركون ")
+        .replace("KB/s", "ك.ب/ث")
     private fun sources() {
         sheet(tr("Playback sources","مصادر التشغيل"),session!!.sources.mapIndexed{i,s ->
             val host=runCatching{Uri.parse(s.url).host}.getOrNull().orEmpty()
-            ((if(i==sourceIndex)"✓  " else "")+s.kind+" · "+host+"\n"+if(s.networkObserved)tr("Observed request","طلب مرصود") else tr("Page hint, not verified","إشارة من الصفحة، لم تُتحقق")) to {play(i,player?.currentPosition?:0)}
+            ((if(i==sourceIndex)"✓  " else "")+sourceKind(s.kind)+" · "+host+"\n"+if(s.networkObserved)tr("Observed request","طلب مرصود") else tr("Page hint, not verified","إشارة من الصفحة، لم تُتحقق")) to {play(i,player?.currentPosition?:0)}
         })
     }
     private fun quality() {
@@ -174,7 +182,7 @@ class PlayerActivity : AppCompatActivity() {
     }
     private fun audio() {
         val p=player?:return;val rows=mutableListOf<Pair<String,()->Unit>>()
-        p.currentTracks.groups.filter{it.type==C.TRACK_TYPE_AUDIO}.forEach{g->for(i in 0 until g.length)if(g.isTrackSupported(i)) {val f=g.getTrackFormat(i);rows.add((f.label?:f.language?:"Audio ${i+1}") to {p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup,i)).build()})}}
+        p.currentTracks.groups.filter{it.type==C.TRACK_TYPE_AUDIO}.forEach{g->for(i in 0 until g.length)if(g.isTrackSupported(i)) {val f=g.getTrackFormat(i);rows.add((f.label?:f.language?:tr("Audio ${i+1}","مسار صوت ${i+1}")) to {p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup,i)).build()})}}
         sheet(tr("Audio tracks","مسارات الصوت"),rows)
     }
     private fun pictureSize(){sheet(tr("Picture size","حجم الصورة"),listOf(tr("Fit","ملاءمة"),tr("Zoom","اقتصاص"),tr("Fill","تمديد")).mapIndexed{i,l->l to {resize=i;pv.resizeMode=intArrayOf(AspectRatioFrameLayout.RESIZE_MODE_FIT,AspectRatioFrameLayout.RESIZE_MODE_ZOOM,AspectRatioFrameLayout.RESIZE_MODE_FILL)[i]}})}
@@ -192,7 +200,7 @@ class PlayerActivity : AppCompatActivity() {
     private fun more() {sheet(tr("Playback controls","أدوات التشغيل"),listOf(
         tr("Picture-in-picture","عرض مصغر") to {enterMiniPlayer()},
         tr("Speed · ${speed}x","السرعة · ${speed}x") to {sheet(tr("Speed","السرعة"),listOf(.5f,.75f,1f,1.25f,1.5f,2f).map{v->"${v}x" to {speed=v;player?.setPlaybackSpeed(v)}})},
-        tr("Aspect ratio","أبعاد الصورة") to {sheet(tr("Picture size","حجم الصورة"),listOf("Fit","Zoom","Fill").mapIndexed{i,l->l to {resize=i;pv.resizeMode=intArrayOf(AspectRatioFrameLayout.RESIZE_MODE_FIT,AspectRatioFrameLayout.RESIZE_MODE_ZOOM,AspectRatioFrameLayout.RESIZE_MODE_FILL)[i]}})},
+        tr("Aspect ratio","أبعاد الصورة") to {sheet(tr("Picture size","حجم الصورة"),listOf(tr("Fit","ملاءمة"),tr("Zoom","اقتصاص"),tr("Fill","تمديد")).mapIndexed{i,l->l to {resize=i;pv.resizeMode=intArrayOf(AspectRatioFrameLayout.RESIZE_MODE_FIT,AspectRatioFrameLayout.RESIZE_MODE_ZOOM,AspectRatioFrameLayout.RESIZE_MODE_FILL)[i]}})},
         tr("Audio","الصوت") to {audio()},tr("Volume","مستوى الصوت") to {slider(false)},tr("Brightness","السطوع") to {slider(true)}))}
     private fun slider(bright:Boolean) {
         val audio=getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -215,7 +223,7 @@ class PlayerActivity : AppCompatActivity() {
             sourceIndex=index
             status.text=tr("Starting torrent…","جارٍ بدء التورنت…");status.visibility=View.VISIBLE
             streamer=TorrentStreamer(File(cacheDir,"torrent/"+java.util.UUID.randomUUID())).also{s->s.start(source.url,object:TorrentStreamer.Listener{
-                override fun onStatus(t:String){runOnUiThread{if(generation==playGeneration&&!isFinishing&&!isDestroyed)status.text=t}}
+                override fun onStatus(t:String){runOnUiThread{if(generation==playGeneration&&!isFinishing&&!isDestroyed)status.text=if(ar())torrentStatus(t) else t}}
                 override fun onReady(url:String,name:String){runOnUiThread{if(generation!=playGeneration||isFinishing||isDestroyed)return@runOnUiThread;resolvedTorrent=PlaybackSource(url=url,kind="VIDEO",label=name);play(index,0)}}
                 override fun onError(e:String){runOnUiThread{if(generation!=playGeneration||isFinishing||isDestroyed)return@runOnUiThread;streamer?.stop();streamer=null;resolvedTorrent=null;torrentIndex=null;status.text=tr("Torrent failed. Try another source.","تعذر تشغيل التورنت. جرّب مصدراً آخر.")}}
             },fetchTorrent={u->ScopedMediaHttp.client(ss.contexts+ss.sources.map{it.context},source.context).newCall(okhttp3.Request.Builder().url(u).build()).execute().use{r->if(!r.isSuccessful)throw java.io.IOException("Torrent request refused");val input=r.body?.byteStream()?:throw java.io.IOException("Empty torrent");val bytes=readTorrentMetadata(input);require(bytes.size<=4*1024*1024){"Torrent metadata too large"};bytes}})};return
@@ -226,11 +234,11 @@ class PlayerActivity : AppCompatActivity() {
         player?.release()
         val contexts=(ss.contexts+ss.sources.map{it.context}+ss.subtitles.map{it.context})
         val factory=ScopedMediaHttp.factory(contexts,source.context)
-        val p=ExoPlayer.Builder(this).setSeekBackIncrementMs(10_000).setSeekForwardIncrementMs(10_000).setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(this,factory))).setSeekBackIncrementMs(10000).setSeekForwardIncrementMs(10000).build()
+        val p=ExoPlayer.Builder(this).setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(this,factory))).setSeekBackIncrementMs(10000).setSeekForwardIncrementMs(10000).build()
         val item=MediaItem.Builder().setUri(source.url)
         val mime=when(source.kind){"HLS"->MimeTypes.APPLICATION_M3U8;"DASH"->MimeTypes.APPLICATION_MPD;else->source.mime.takeIf{it.startsWith("video/")||it.startsWith("audio/")}}
         mime?.let{item.setMimeType(it)}
-        item.setSubtitleConfigurations((ss.subtitles+extraSubs).distinctBy{sourceKey(it.url)}.mapIndexed{i,s ->MediaItem.SubtitleConfiguration.Builder(Uri.parse(s.url)).setMimeType(Sniffer.mimeForSub(s.url,s.mime)).setLanguage(s.language).setLabel(s.label.ifBlank{if(s.language=="ar")"العربية" else "Subtitle ${i+1}"}).build()})
+        item.setSubtitleConfigurations((ss.subtitles+extraSubs).distinctBy{sourceKey(it.url)}.mapIndexed{i,s ->MediaItem.SubtitleConfiguration.Builder(Uri.parse(s.url)).setMimeType(Sniffer.mimeForSub(s.url,s.mime)).setLanguage(s.language).setLabel(s.label.ifBlank{if(s.language=="ar")"العربية" else tr("Subtitle ${i+1}","ترجمة ${i+1}")}).build()})
         status.setOnClickListener(null)
         status.text=tr("Opening source…","جارٍ فتح المصدر…");status.visibility=View.VISIBLE
         p.addListener(object:Player.Listener {
@@ -248,5 +256,5 @@ class PlayerActivity : AppCompatActivity() {
     }
     override fun onSaveInstanceState(out:Bundle){out.putInt("source",sourceIndex);out.putLong("position",player?.currentPosition?:0);super.onSaveInstanceState(out)}
     override fun onStop(){super.onStop();if(!isInPictureInPictureMode)player?.pause()}
-    override fun onDestroy(){++playGeneration;player?.release();streamer?.stop();super.onDestroy()}
+    override fun onDestroy(){if(!isChangingConfigurations)PlaybackSessions.remove(sessionId);++playGeneration;player?.release();streamer?.stop();super.onDestroy()}
 }

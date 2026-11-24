@@ -44,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         var desktop = false
         var generation = 0L
         var loadStarted = 0L
+        var playbackSessionId:String?=null
         var media:MediaSession?=null
         var savedState:GeckoSession.SessionState?=null
         var recovering=false
@@ -87,7 +88,7 @@ class MainActivity : AppCompatActivity() {
         val host = Uri.parse(t.url).host ?: return
         sheet { l, d ->
             title(l, tr("Site protection", "حماية الموقع"))
-            item(l, "uBlock Origin · "+AdBlock.state, tr("Open ad filtering controls for this page", "فتح أدوات حجب الإعلانات لهذه الصفحة"), {
+            item(l, "uBlock Origin · "+adBlockState(), tr("Open ad filtering controls for this page", "فتح أدوات حجب الإعلانات لهذه الصفحة"), {
                 d.dismiss(); if(!AdBlock.show(t.session)) Toast.makeText(this,tr("Ad filter is starting. Try again shortly.","جارٍ بدء حجب الإعلانات. حاول بعد قليل."),Toast.LENGTH_LONG).show()
             })
             item(l, host, null, {})
@@ -98,6 +99,14 @@ class MainActivity : AppCompatActivity() {
             item(l, tr("Tracking protection for this site", "حماية التتبع لهذا الموقع"),
                 tr("Cookie isolation and GPC remain on globally. Use uBlock controls above for ad-filter exceptions.", "عزل ملفات الارتباط وإشارة الخصوصية يظلان مفعلين. استخدم أدوات uBlock أعلاه لاستثناءات حجب الإعلانات."), {})
         }
+    }
+
+    private fun adBlockState() = when(AdBlock.state.lowercase()) {
+        "on" -> tr("on","مفعّل")
+        "off" -> tr("off","متوقف")
+        "starting", "installing" -> tr("starting","جارٍ البدء")
+        "unavailable" -> tr("unavailable","غير متاح")
+        else -> tr("loading","جارٍ التحميل")
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -304,8 +313,8 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageStart(session: GeckoSession, u: String) {
                 tab.loadStarted = android.os.SystemClock.elapsedRealtime()
-                tab.generation++
-                tab.found.clear(); tab.resources.clear(); tab.contexts.clear();tab.rejected.clear();tab.fragments.clear();tab.subtitleHints.clear(); tab.url = u
+                clearPageCaptures(tab)
+                tab.url = u
                 if (cur === tab) { refreshCounts(); if (!urlBar.hasFocus()) urlBar.setText(shown(u)) }
             }
             override fun onPageStop(session: GeckoSession, success: Boolean) {
@@ -320,7 +329,9 @@ class MainActivity : AppCompatActivity() {
         }
         s.navigationDelegate = object : GeckoSession.NavigationDelegate {
             override fun onLocationChange(session: GeckoSession, u: String?, perms: MutableList<GeckoSession.PermissionDelegate.ContentPermission>, hasUserGesture: Boolean) {
-                tab.url = u ?: ""
+                val next=u?:""
+                if(next!=tab.url)clearPageCaptures(tab)
+                tab.url = next
                 Uri.parse(tab.url).host?.let { host -> session.settings.useTrackingProtection=store.protection(host) }
                 if (cur === tab && !urlBar.hasFocus()) urlBar.setText(shown(tab.url))
             }
@@ -370,7 +381,7 @@ class MainActivity : AppCompatActivity() {
                     req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                     req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
                     (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).enqueue(req)
-                    ui.post { Toast.makeText(this@MainActivity, "Downloading $name", Toast.LENGTH_SHORT).show() }
+                    ui.post { Toast.makeText(this@MainActivity, tr("Downloading $name","جارٍ تنزيل $name"), Toast.LENGTH_SHORT).show() }
                 } catch (_: Exception) {}
             }
         }
@@ -421,7 +432,15 @@ class MainActivity : AppCompatActivity() {
         }catch(_:Exception){tab.recovering=false;android.util.Log.w("NovaEngine","Tab recovery could not finish")}
     }
 
+    private fun clearPageCaptures(t:Tab){
+        t.generation++
+        t.found.clear();t.resources.clear();t.contexts.clear();t.rejected.clear();t.fragments.clear();t.subtitleHints.clear()
+        PlaybackSessions.remove(t.playbackSessionId);t.playbackSessionId=null
+        if(cur===t)refreshCounts()
+    }
+
     private fun closeTab(t: Tab) {
+        clearPageCaptures(t)
         val i = tabs.indexOf(t)
         detectorAttachments.unregister(t)
         tabs.remove(t)
@@ -487,7 +506,9 @@ class MainActivity : AppCompatActivity() {
             sources=all.filter { it.kind != "SUB" },
             subtitles=all.filter { it.kind == "SUB" }, contexts=t.contexts.values.toList())
         t.media?.pause()
-        startActivity(Intent(this, PlayerActivity::class.java).putExtra("playbackSession",PlaybackSessions.put(ps)))
+        PlaybackSessions.remove(t.playbackSessionId)
+        val id=PlaybackSessions.put(ps);t.playbackSessionId=id
+        startActivity(Intent(this, PlayerActivity::class.java).putExtra("playbackSession",id))
     }
 
     private fun copy(s: String) {
@@ -512,11 +533,11 @@ class MainActivity : AppCompatActivity() {
             val bm = store.isBookmarked(t.url)
             item(l, tr("New tab","علامة تبويب جديدة"), null, { d.dismiss(); newTab(null) })
             item(l, if (bm) tr("Remove bookmark","إزالة من المحفوظات") else tr("Bookmark this page","حفظ الصفحة"), null, {
-                d.dismiss(); if (t.url.startsWith("http")) { val on = store.toggleBookmark(t.title, t.url); Toast.makeText(this, if (on) "Bookmarked" else "Removed", Toast.LENGTH_SHORT).show() }
+                d.dismiss(); if (t.url.startsWith("http")) { val on = store.toggleBookmark(t.title, t.url); Toast.makeText(this, if (on) tr("Bookmarked","تم الحفظ") else tr("Removed","تمت الإزالة"), Toast.LENGTH_SHORT).show() }
             })
             item(l, tr("Bookmarks","المحفوظات"), null, { d.dismiss(); showList(tr("Bookmarks","المحفوظات"), store.bookmarks()) })
             item(l, tr("History","السجل"), null, { d.dismiss(); showList(tr("History","السجل"), store.history()) })
-            item(l, "Desktop site: " + if (t.desktop) "on" else "off", null, {
+            item(l, tr("Desktop site: ","نسخة سطح المكتب: ") + if (t.desktop) tr("on","مفعلة") else tr("off","متوقفة"), null, {
                 d.dismiss(); t.desktop = !t.desktop
                 t.session.settings.userAgentMode = if (t.desktop) GeckoSessionSettings.USER_AGENT_MODE_DESKTOP else GeckoSessionSettings.USER_AGENT_MODE_MOBILE
                 t.session.settings.viewportMode = if (t.desktop) GeckoSessionSettings.VIEWPORT_MODE_DESKTOP else GeckoSessionSettings.VIEWPORT_MODE_MOBILE
@@ -526,7 +547,7 @@ class MainActivity : AppCompatActivity() {
             item(l, tr("Settings", "الإعدادات"), null, { d.dismiss(); showSettings() })
             item(l, tr("Play a magnet link / torrent URL","تشغيل رابط مغناطيسي أو تورنت"), null, { d.dismiss(); askMagnet() })
             item(l, tr("Share page","مشاركة الصفحة"), null, {
-                d.dismiss(); startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, t.url), "Share"))
+                d.dismiss(); startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, t.url), tr("Share","مشاركة")))
             })
             item(l, tr("Downloads","التنزيلات"), null, { d.dismiss(); startActivity(Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)) })
             item(l, tr("Clear history & cookies","مسح السجل وملفات الارتباط"), null, {
@@ -536,10 +557,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun askMagnet() {
-        val e = EditText(this).apply { hint = "magnet:?xt=urn:btih:...  or  https://.../file.torrent"; setSingleLine() }
-        AlertDialog.Builder(this).setTitle("Torrent / magnet").setView(e)
-            .setPositiveButton("Play") { _, _ -> val s = e.text.toString().trim(); if (s.isNotEmpty()) openPlayer(s, emptyList(), "") }
-            .setNegativeButton("Cancel", null).show()
+        val e = EditText(this).apply { hint = tr("magnet:?xt=urn:btih:...  or  https://.../file.torrent","رابط مغناطيسي أو رابط ملف تورنت"); setSingleLine() }
+        AlertDialog.Builder(this).setTitle(tr("Torrent / magnet","رابط تورنت أو مغناطيسي")).setView(e)
+            .setPositiveButton(tr("Play","تشغيل")) { _, _ -> val s = e.text.toString().trim(); if (s.isNotEmpty()) openPlayer(s, emptyList(), "") }
+            .setNegativeButton(tr("Cancel","إلغاء"), null).show()
     }
 
     private fun showList(name: String, list: List<Store.Entry>) {
@@ -563,7 +584,7 @@ class MainActivity : AppCompatActivity() {
             item(l,tr("Language", "اللغة"),tr("Follows device language", "تتبع لغة الجهاز"),{})
             item(l,tr("Playback", "التشغيل"),tr("Sources, subtitles, quality and audio inside player", "المصادر والترجمات والجودة والصوت داخل المشغل"),{})
             title(l,tr("About Nova", "عن نوفا"))
-            item(l,"Nova · 0.3 development",tr("In development. Not a finished browser.", "قيد التطوير. ليس متصفحاً مكتملاً بعد."),{})
+            item(l,tr("Nova · 0.3 development","نوفا · 0.3 قيد التطوير"),tr("In development. Not a finished browser.", "قيد التطوير. ليس متصفحاً مكتملاً بعد."),{})
         }
     }
 
