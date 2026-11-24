@@ -28,6 +28,7 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var status: TextView
     private lateinit var name: TextView
     private lateinit var actions: LinearLayout
+    private lateinit var topBar: LinearLayout
     private var session: PlaybackSession? = null
     private var sessionId: String? = null
     private var sourceIndex = 0
@@ -76,6 +77,7 @@ class PlayerActivity : AppCompatActivity() {
         name=TextView(this).apply {text=session!!.title;setTextColor(white);textSize=19f;typeface=android.graphics.Typeface.create("sans-serif-medium",0);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END}
         top.addView(name,LinearLayout.LayoutParams(0,dp(44),1f))
         top.addView(button("↻") { requestedOrientation=if(resources.configuration.orientation==2) ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE }.apply{text="";contentDescription="Rotate";setCompoundDrawablesWithIntrinsicBounds(R.drawable.nova_rotate,0,0,0);setPadding(dp(10),0,0,0)},LinearLayout.LayoutParams(dp(48),dp(44)))
+        topBar=top
         root.addView(top,FrameLayout.LayoutParams(-1,-2,Gravity.TOP))
         actions=LinearLayout(this).apply {gravity=Gravity.CENTER;setPadding(dp(62),dp(4),dp(8),dp(8));background=android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.BOTTOM_TOP,intArrayOf(0xD510101A.toInt(),0x0010101A))}
         val labels=listOf(tr("Volume","الصوت"),tr("Sources","المصادر"),tr("Picture size","حجم الصورة"),tr("Subtitles","الترجمات"),tr("Quality","الجودة"),tr("More","المزيد"))
@@ -87,7 +89,8 @@ class PlayerActivity : AppCompatActivity() {
         status=TextView(this).apply {setTextColor(white);textSize=16f;gravity=Gravity.CENTER;setPadding(dp(24),dp(20),dp(24),dp(20));setBackgroundColor(0xCC15141D.toInt());visibility=View.GONE}
         root.addView(status,FrameLayout.LayoutParams(-1,-2,Gravity.CENTER))
         pv.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { v ->
-            top.visibility=v;actions.visibility=v
+            val show=if(isInPictureInPictureMode)View.GONE else v
+            top.visibility=show;actions.visibility=show
             positionSubtitles(v==View.VISIBLE)
         })
         setContentView(root)
@@ -175,7 +178,19 @@ class PlayerActivity : AppCompatActivity() {
         sheet(tr("Audio tracks","مسارات الصوت"),rows)
     }
     private fun pictureSize(){sheet(tr("Picture size","حجم الصورة"),listOf(tr("Fit","ملاءمة"),tr("Zoom","اقتصاص"),tr("Fill","تمديد")).mapIndexed{i,l->l to {resize=i;pv.resizeMode=intArrayOf(AspectRatioFrameLayout.RESIZE_MODE_FIT,AspectRatioFrameLayout.RESIZE_MODE_ZOOM,AspectRatioFrameLayout.RESIZE_MODE_FILL)[i]}})}
+    private fun enterMiniPlayer(){
+        if(player==null)return
+        val ok=runCatching{enterPictureInPictureMode(android.app.PictureInPictureParams.Builder().setAspectRatio(android.util.Rational(16,9)).build())}.getOrDefault(false)
+        if(!ok)Toast.makeText(this,tr("Picture-in-picture is unavailable or disabled","العرض المصغر غير متاح أو متوقف"),Toast.LENGTH_LONG).show()
+    }
+    override fun onPictureInPictureModeChanged(active:Boolean,config:android.content.res.Configuration){
+        super.onPictureInPictureModeChanged(active,config)
+        pv.useController=!active;topBar.visibility=if(active)View.GONE else View.VISIBLE;actions.visibility=if(active)View.GONE else View.VISIBLE
+        positionSubtitles(false)
+        if(!active)pv.showController()
+    }
     private fun more() {sheet(tr("Playback controls","أدوات التشغيل"),listOf(
+        tr("Picture-in-picture","عرض مصغر") to {enterMiniPlayer()},
         tr("Speed · ${speed}x","السرعة · ${speed}x") to {sheet(tr("Speed","السرعة"),listOf(.5f,.75f,1f,1.25f,1.5f,2f).map{v->"${v}x" to {speed=v;player?.setPlaybackSpeed(v)}})},
         tr("Aspect ratio","أبعاد الصورة") to {sheet(tr("Picture size","حجم الصورة"),listOf("Fit","Zoom","Fill").mapIndexed{i,l->l to {resize=i;pv.resizeMode=intArrayOf(AspectRatioFrameLayout.RESIZE_MODE_FIT,AspectRatioFrameLayout.RESIZE_MODE_ZOOM,AspectRatioFrameLayout.RESIZE_MODE_FILL)[i]}})},
         tr("Back 10 seconds","رجوع 10 ثوانٍ") to {player?.seekBack()},tr("Forward 10 seconds","تقديم 10 ثوانٍ") to {player?.seekForward()},
@@ -233,6 +248,6 @@ class PlayerActivity : AppCompatActivity() {
         positionSubtitles(pv.isControllerFullyVisible)
     }
     override fun onSaveInstanceState(out:Bundle){out.putInt("source",sourceIndex);out.putLong("position",player?.currentPosition?:0);super.onSaveInstanceState(out)}
-    override fun onStop(){super.onStop();player?.pause()}
+    override fun onStop(){super.onStop();if(!isInPictureInPictureMode)player?.pause()}
     override fun onDestroy(){++playGeneration;player?.release();streamer?.stop();super.onDestroy()}
 }

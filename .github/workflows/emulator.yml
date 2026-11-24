@@ -105,6 +105,7 @@ jobs:
             adb shell dumpsys gfxinfo app.nova.browser.trial > shots/frames.txt
             python3 testpage/external-check.py || touch shots/regression-failed
             python3 testpage/vidsrc-check.py
+            python3 testpage/pip-check.py || touch shots/regression-failed
             python3 testpage/resource-check.py
             test ! -f shots/regression-failed
             adb logcat -d -s AndroidRuntime:E NovaEngine:I NovaPerf:I ExoPlayerImplInternal:E > shots/crashes.txt
