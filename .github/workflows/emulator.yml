@@ -90,6 +90,7 @@ jobs:
             adb shell dumpsys meminfo app.nova.browser > shots/memory.txt
             adb shell dumpsys meminfo --package app.nova.browser > shots/all-process-memory.txt
             adb shell dumpsys gfxinfo app.nova.browser > shots/frames.txt
+            python3 testpage/external-check.py
             adb logcat -d -s AndroidRuntime:E NovaEngine:I NovaPerf:I ExoPlayerImplInternal:E > shots/crashes.txt
       - uses: actions/upload-artifact@v4
         if: always()

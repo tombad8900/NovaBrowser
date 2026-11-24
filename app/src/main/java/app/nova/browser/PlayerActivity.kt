@@ -210,7 +210,7 @@ class PlayerActivity : AppCompatActivity() {
         status.text=tr("Opening source…","جارٍ فتح المصدر…");status.visibility=View.VISIBLE
         p.addListener(object:Player.Listener {
             override fun onIsPlayingChanged(playing:Boolean){pv.controllerShowTimeoutMs=if(playing)6000 else 0}
-            override fun onPlaybackStateChanged(state:Int){if(state==Player.STATE_READY)status.visibility=View.GONE}
+            override fun onPlaybackStateChanged(state:Int){if(state==Player.STATE_READY){status.visibility=View.GONE;android.util.Log.i("NovaPlayback","Ready kind=${source.kind} videoGroups=${p.currentTracks.groups.count{it.type==C.TRACK_TYPE_VIDEO}} audioGroups=${p.currentTracks.groups.count{it.type==C.TRACK_TYPE_AUDIO}}") }}
             override fun onPlayerError(e:PlaybackException){status.text=when(e.errorCode){PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS->tr("The server refused this request. Return to the page or choose another source.","رفض الخادم طلب التشغيل. ارجع للصفحة أو اختر مصدراً آخر.");PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED->tr("This response is not a valid stream. Choose another source or return to the page.","الاستجابة ليست بثاً صالحاً. اختر مصدراً آخر أو ارجع للصفحة.");else->tr("Couldn't play this source. Tap here to retry, or choose Sources.","تعذر تشغيل المصدر. اضغط هنا للمحاولة أو اختر المصادر.")};status.visibility=View.VISIBLE;status.setOnClickListener{play(sourceIndex,player?.currentPosition?:0)}}
         })
         p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setPreferredTextLanguage("ar").build()
