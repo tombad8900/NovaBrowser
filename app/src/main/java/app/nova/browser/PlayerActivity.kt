@@ -65,7 +65,7 @@ class PlayerActivity : AppCompatActivity() {
         }
         val root=FrameLayout(this).apply { setBackgroundColor(0xFF000000.toInt()) }
         pv=layoutInflater.inflate(R.layout.nova_player_view,root,false) as PlayerView
-        pv.apply {controllerShowTimeoutMs=8000;setShowSubtitleButton(false)}
+        pv.apply {controllerShowTimeoutMs=6000;setShowSubtitleButton(false)}
         root.addView(pv,FrameLayout.LayoutParams(-1,-1))
         val top=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; setPadding(dp(12),dp(16),dp(12),dp(8));background=android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(0xE610101A.toInt(),0x0010101A)) }
         top.addView(button("‹") {finish()},LinearLayout.LayoutParams(dp(48),dp(44)))

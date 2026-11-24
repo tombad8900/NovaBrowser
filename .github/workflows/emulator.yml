@@ -41,14 +41,6 @@ jobs:
             printf 'WEBVTT\n\n00:00:00.000 --> 00:00:20.000\nNOVA SUBTITLE OK\n' > testpage/ar.vtt
             (python3 testpage/server.py > /tmp/test-server.log 2>&1 &)
             sleep 2
-            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/test.html app.nova.browser
-            sleep 15
-            adb exec-out screencap -p > shots/3-detector-page.png
-            adb shell uiautomator dump /sdcard/ui2.xml && adb pull /sdcard/ui2.xml shots/ui2.xml
-            python3 testpage/emulator-check.py
-            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/plain.html app.nova.browser
-            sleep 8
-            adb exec-out screencap -p > shots/6-plain.png
             adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/popup.html app.nova.browser
             sleep 5
             adb exec-out screencap -p > shots/9-popup-before.png
@@ -57,6 +49,14 @@ jobs:
             sleep 5
             adb exec-out screencap -p > shots/10-popup-after.png
             adb shell pidof app.nova.browser
+            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/test.html app.nova.browser
+            sleep 15
+            adb exec-out screencap -p > shots/3-detector-page.png
+            adb shell uiautomator dump /sdcard/ui2.xml && adb pull /sdcard/ui2.xml shots/ui2.xml
+            python3 testpage/emulator-check.py || { adb logcat -d -s AndroidRuntime:E NovaEngine:I NovaPerf:I ExoPlayerImplInternal:E > shots/crashes.txt; exit 1; }
+            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/plain.html app.nova.browser
+            sleep 8
+            adb exec-out screencap -p > shots/6-plain.png
             adb logcat -d -s AndroidRuntime:E NovaEngine:I NovaPerf:I ExoPlayerImplInternal:E > shots/crashes.txt
       - uses: actions/upload-artifact@v4
         if: always()

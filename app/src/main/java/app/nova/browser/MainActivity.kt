@@ -55,7 +55,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var holder: FrameLayout
     private lateinit var urlBar: EditText
     private lateinit var progress: ProgressBar
-    private lateinit var snifBtn: TextView
+    private lateinit var playAction: TextView
     private lateinit var tabBtn: TextView
     private lateinit var fullscreenHost: FrameLayout
     private val tabs = mutableListOf<Tab>()
@@ -156,7 +156,6 @@ class MainActivity : AppCompatActivity() {
         }
         barWrap.addView(urlBar)
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        snifBtn = btn("▷") { showSniffer() }
         tabBtn = btn("1") { showTabs() }
         row.addView(btn("‹") { cur?.let { if (it.canBack) it.session.goBack() } })
         row.addView(btn("›") { cur?.let { if (it.canFwd) it.session.goForward() } })
@@ -164,11 +163,11 @@ class MainActivity : AppCompatActivity() {
         row.addView(btn("◇") { cur?.let{protection(it)} })
         row.addView(tabBtn)
         row.addView(btn("⋮") { showMenu() })
-        val playLabel=TextView(this).apply {
+        playAction=TextView(this).apply {
             text=tr("Play in Nova", "تشغيل في نوفا");setTextColor(accent);textSize=14f;gravity=Gravity.CENTER
             setPadding(0,dp(10),0,dp(10));setOnClickListener{showSniffer()}
         }
-        barWrap.addView(playLabel)
+        barWrap.addView(playAction)
         barWrap.addView(row)
 
         col.addView(progress); col.addView(holder); col.addView(barWrap)
@@ -371,11 +370,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshCounts() {
         tabBtn.text = tabs.size.toString()
-        val n = cur?.found?.values?.count { it.kind != "SUB" } ?: 0
-        val s = cur?.found?.values?.count { it.kind == "SUB" } ?: 0
-        snifBtn.text = if (n > 0) "▶" else "▷"
-        snifBtn.contentDescription = "Play in Nova"
-        snifBtn.setTextColor(if (n > 0) accent else textColor)
+        val ready=cur?.found?.values?.any{it.kind!="SUB"}==true
+        playAction.alpha=if(ready)1f else .5f
+        playAction.background=if(ready)rounded(0xFF252035.toInt(),14) else null
     }
 
     private fun addFound(t: Tab, f: Found) {
@@ -413,7 +410,7 @@ class MainActivity : AppCompatActivity() {
         val t = cur ?: return
         val candidates = t.found.values.filter { it.kind != "SUB" && it.kind != "TORRENT" }
         if (candidates.isEmpty()) {
-            Toast.makeText(this, "Start the video on the page, then tap Play in Nova", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, tr("Start the video on the page, then tap Play in Nova","ابدأ الفيديو في الصفحة ثم اختر تشغيل في نوفا"), Toast.LENGTH_LONG).show()
             return
         }
         val all = t.found.values.map { f -> t.resources[sourceKey(f.url)] ?: PlaybackSource(url=f.url,kind=f.kind) }
