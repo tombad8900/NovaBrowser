@@ -7,6 +7,10 @@ on:
         description: Optional successful Build run to reuse its exact x64 APK without dependency downloads.
         required: false
         default: ''
+      transport_only:
+        description: Run only transport touch regression on the reused APK.
+        required: false
+        default: 'false'
       pip_probe:
         description: Explicit optional PiP interaction probe. Not verified yet.
         required: false
@@ -24,6 +28,7 @@ jobs:
       contents: read
     env:
       NOVA_TMDB_PROBE: ${{ inputs.tmdb_probe }}
+      NOVA_TRANSPORT_ONLY: ${{ inputs.transport_only }}
       NOVA_PIP_PROBE: ${{ inputs.pip_probe }}
     steps:
       - uses: actions/checkout@v4
@@ -95,6 +100,7 @@ jobs:
             printf 'WEBVTT\n\n00:00:00.000 --> 00:02:00.000\nاختبار الترجمة العربية في نوفا\n' > testpage/ar.vtt
             (python3 testpage/server.py > /tmp/test-server.log 2>&1 &)
             sleep 2
+            if [ "$NOVA_TRANSPORT_ONLY" = "true" ]; then python3 testpage/transport-check.py; exit $?; fi
             adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/popup.html app.nova.browser.trial
             sleep 5
             adb exec-out screencap -p > shots/9-popup-before.png
