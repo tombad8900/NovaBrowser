@@ -27,7 +27,7 @@ for rtl in [0,1]:
   tap('Menu');tap('Settings');tap('Language');tap('العربية');time.sleep(4)
  adb('shell','am','force-stop',pkg)
  adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/switch.html','--ez','testHoldControls','true',pkg);time.sleep(6)
- tap('التشغيل في نوفا' if rtl else 'Play in Nova');time.sleep(4)
+ tap('تشغيل في نوفا' if rtl else 'Play in Nova');time.sleep(4)
  for orientation in ['portrait','landscape']:
   if orientation=='landscape':tap('تدوير الشاشة' if rtl else 'Rotate');time.sleep(2)
   pause=find('exo_play_pause').attrib.get('content-desc','')
