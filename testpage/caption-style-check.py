@@ -7,7 +7,7 @@ def launch():
  for attempt in range(3):
   tap('تشغيل في نوفا');time.sleep(1)
   activities=adb('shell','dumpsys','activity','activities').decode()
-  if re.search(r'topResumedActivity=.*PlayerActivity',activities):break
+  if re.search(r'(?:mResumedActivity|topResumedActivity):?=.*PlayerActivity',activities):break
   time.sleep(1)
  else:raise RuntimeError('Caption source did not become ready')
  time.sleep(3);tap('الترجمات');tap('العربية');time.sleep(2)
