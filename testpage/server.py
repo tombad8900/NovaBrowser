@@ -7,6 +7,9 @@ class Handler(SimpleHTTPRequestHandler):
         pass
     def do_GET(self):
         path=self.path.split('?')[0]
+        if path=='/protection.html':
+            self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers()
+            self.wfile.write(b'<meta name=viewport content="width=device-width"><h2>Protection fixture</h2><p id=ad>Checking ad request</p><script>fetch("https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js",{mode:"no-cors"}).then(()=>document.getElementById("ad").textContent="Request completed").catch(()=>document.getElementById("ad").textContent="Ad request blocked or network failed");</script>');return
         if path=='/popup.html':
             self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers()
             self.wfile.write(b'<meta name=viewport content="width=device-width"><h2>Popup regression</h2><a target="_blank" href="/plain.html">Open safe tab</a><script>window.open("/plain.html");</script>');return

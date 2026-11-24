@@ -41,7 +41,8 @@ object Engine {
             .globalPrivacyControlEnabled(true)
             .aboutConfigEnabled(false)
             .remoteDebuggingEnabled(false)
-            .consoleOutput(true)
+            .consoleOutput(false)
+            .lowMemoryDetection(true)
             .build()
         val rt = GeckoRuntime.create(ctx.applicationContext, settings)
         runtime = rt
