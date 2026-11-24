@@ -21,4 +21,10 @@ open('shots/19-external-player.png','wb').write(adb('exec-out','screencap','-p')
 if 'Ready kind=' not in log or 'Playback error' in log or 'FATAL EXCEPTION' in log:raise RuntimeError('Public demo native playback not verified')
 # Reveal paused controls for inspectable panels.
 adb('shell','input','tap','160','280');time.sleep(.2)
+adb('shell','input','tap','32','608');time.sleep(.2)
 tap('Sources');open('shots/20-external-sources.png','wb').write(adb('exec-out','screencap','-p'))
+
+adb('shell','input','keyevent','KEYCODE_BACK')
+tap('Quality');open('shots/21-external-quality.png','wb').write(adb('exec-out','screencap','-p'));adb('shell','input','keyevent','KEYCODE_BACK')
+tap('More');tap('Audio');open('shots/22-external-audio.png','wb').write(adb('exec-out','screencap','-p'));adb('shell','input','keyevent','KEYCODE_BACK')
+tap('Subtitles');open('shots/23-external-subtitles.png','wb').write(adb('exec-out','screencap','-p'))
