@@ -17,5 +17,6 @@ class RequestContextTest {
   assertTrue(c.safeHeaders("https://cdn.example/a/%2e%2e/secret").isEmpty())
  }
  @Test fun preserveSignedQuery() { assertNotEquals(sourceKey("https://a/v?token=1"),sourceKey("https://a/v?token=2"));assertEquals(sourceKey("https://a/v#one"),sourceKey("https://a/v#two")) }
+ @Test fun hlsMimeAliases() {assertEquals("HLS",Sniffer.classifyMime("https://a/stream","audio/x-mpegurl"))}
  @Test fun htmlIsNotMedia() { assertNull(Sniffer.classifyMime("https://a/master.m3u8","text/html"));assertEquals("HLS",Sniffer.classifyMime("https://a/noextension","application/vnd.apple.mpegurl")) }
 }

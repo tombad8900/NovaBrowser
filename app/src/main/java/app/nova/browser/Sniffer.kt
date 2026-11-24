@@ -30,7 +30,7 @@ object Sniffer {
         val c = ct.substringBefore(';').trim().lowercase()
         if (c == "text/html" || c == "application/json") return null
         return when {
-            c == "application/vnd.apple.mpegurl" || c == "application/x-mpegurl" -> "HLS"
+            c in setOf("application/vnd.apple.mpegurl","application/x-mpegurl","audio/mpegurl","audio/x-mpegurl") -> "HLS"
             c == "application/dash+xml" -> "DASH"
             c == "text/vtt" || c == "application/x-subrip" -> "SUB"
             c.startsWith("video/") -> "VIDEO"

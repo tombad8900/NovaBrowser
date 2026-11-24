@@ -196,7 +196,7 @@ class PlayerActivity : AppCompatActivity() {
         val factory=ScopedMediaHttp.factory(contexts,source.context)
         val p=ExoPlayer.Builder(this).setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(this,factory))).setSeekBackIncrementMs(10000).setSeekForwardIncrementMs(10000).build()
         val item=MediaItem.Builder().setUri(source.url)
-        val mime=source.mime.takeIf{it.isNotBlank()}?:when(source.kind){"HLS"->MimeTypes.APPLICATION_M3U8;"DASH"->MimeTypes.APPLICATION_MPD;else->null}
+        val mime=when(source.kind){"HLS"->MimeTypes.APPLICATION_M3U8;"DASH"->MimeTypes.APPLICATION_MPD;else->source.mime.takeIf{it.startsWith("video/")||it.startsWith("audio/")}}
         mime?.let{item.setMimeType(it)}
         item.setSubtitleConfigurations((ss.subtitles+extraSubs).mapIndexed{i,s ->MediaItem.SubtitleConfiguration.Builder(Uri.parse(s.url)).setMimeType(s.mime.takeIf{it in setOf("text/vtt","application/x-subrip","text/x-ssa","application/ttml+xml")}?:Sniffer.mimeForSub(s.url)).setLanguage(s.language).setLabel(s.label.ifBlank{if(s.language=="ar")"العربية" else "Subtitle ${i+1}"}).build()})
         status.setOnClickListener(null)
