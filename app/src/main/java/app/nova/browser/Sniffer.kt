@@ -71,6 +71,36 @@ object Sniffer {
     }
 
     /** Pull candidate links out of free text (used for the JSON the page scan returns). */
-    fun foundFromUrls(urls: List<String>, source: String): List<Found> =
-        urls.mapNotNull { u -> classify(u)?.let { Found(u, it, source) } }
+    fun foundFromUrls(urls:List<String>,source:String):List<Found> = urls.take(150).mapNotNull{u->
+        classify(u)?.let{Found(u,it,source)}?:unwrapMediaHint(u)?.let{candidate->classify(candidate)?.let{Found(candidate,it,"wrapped-hint")}}
+    }.distinctBy{sourceKey(it.url)}
+
+    /** Inspect explicit wrapper parameters only. Never treat a player/page keyword as media. */
+    internal fun unwrapMediaHint(input:String):String? {
+        if(input.length>16384)return null
+        val keys=setOf("url","src","file","source","stream","video","media","data")
+        var current=input
+        val visited=mutableSetOf<String>()
+        repeat(3){
+            if(!visited.add(current))return null
+            val uri=runCatching{java.net.URI(current)}.getOrNull()?:return null
+            if(uri.scheme?.lowercase() !in setOf("http","https")||uri.host.isNullOrBlank())return null
+            val options=uri.rawQuery?.split('&')?.take(40).orEmpty().mapNotNull{pair->
+                val key=runCatching{java.net.URLDecoder.decode(pair.substringBefore('='),"UTF-8")}.getOrNull()?.lowercase()
+                if(key !in keys)return@mapNotNull null
+                val raw=pair.substringAfter('=',"")
+                val once=decodeHint(raw)
+                val values=listOfNotNull(once,decodeHint(once),runCatching{
+                    val compact=once.replace('-','+').replace('_','/')
+                    String(java.util.Base64.getDecoder().decode(compact+"=".repeat((4-compact.length%4)%4)),Charsets.UTF_8)
+                }.getOrNull())
+                values.firstOrNull{value->value.length<=16384&&runCatching{val u=java.net.URI(value);u.scheme?.lowercase() in setOf("http","https")&&!u.host.isNullOrBlank()&&u.rawUserInfo==null}.getOrDefault(false)}
+            }
+            val candidate=options.firstOrNull{classify(it)!=null}?:options.firstOrNull()?:return null
+            if(classify(candidate)!=null)return candidate
+            current=candidate
+        }
+        return null
+    }
+    private fun decodeHint(value:String)=runCatching{java.net.URLDecoder.decode(value.replace("+","%2B"),"UTF-8")}.getOrDefault(value)
 }
