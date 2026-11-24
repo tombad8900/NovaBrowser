@@ -70,7 +70,7 @@ class PlayerActivity : AppCompatActivity() {
         }
         val root=FrameLayout(this).apply { setBackgroundColor(0xFF000000.toInt()) }
         pv=layoutInflater.inflate(R.layout.nova_player_view,root,false) as PlayerView
-        pv.apply {controllerShowTimeoutMs=6000;setShowSubtitleButton(false)}
+        pv.apply {controllerShowTimeoutMs=6000;setShowSubtitleButton(false);setShowRewindButton(true);setShowFastForwardButton(true)}
         root.addView(pv,FrameLayout.LayoutParams(-1,-1))
         val top=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; setPadding(dp(12),dp(16),dp(12),dp(8));background=android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(0xE610101A.toInt(),0x0010101A)) }
         top.addView(button("‹") {finish()}.apply{text="";setCompoundDrawablesWithIntrinsicBounds(R.drawable.nova_back,0,0,0);setPadding(dp(10),0,0,0)},LinearLayout.LayoutParams(dp(48),dp(44)))
@@ -79,7 +79,7 @@ class PlayerActivity : AppCompatActivity() {
         top.addView(button("↻") { requestedOrientation=if(resources.configuration.orientation==2) ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE }.apply{text="";contentDescription="Rotate";setCompoundDrawablesWithIntrinsicBounds(R.drawable.nova_rotate,0,0,0);setPadding(dp(10),0,0,0)},LinearLayout.LayoutParams(dp(48),dp(44)))
         topBar=top
         root.addView(top,FrameLayout.LayoutParams(-1,-2,Gravity.TOP))
-        actions=LinearLayout(this).apply {gravity=Gravity.CENTER;setPadding(dp(62),dp(4),dp(8),dp(8));background=android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.BOTTOM_TOP,intArrayOf(0xD510101A.toInt(),0x0010101A))}
+        actions=LinearLayout(this).apply {gravity=Gravity.CENTER;setPadding(dp(8),dp(4),dp(8),dp(8));background=android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.BOTTOM_TOP,intArrayOf(0xD510101A.toInt(),0x0010101A))}
         val labels=listOf(tr("Volume","الصوت"),tr("Sources","المصادر"),tr("Picture size","حجم الصورة"),tr("Subtitles","الترجمات"),tr("Quality","الجودة"),tr("More","المزيد"))
         val icons=intArrayOf(R.drawable.nova_volume,R.drawable.nova_sources,R.drawable.nova_fit,R.drawable.nova_captions,R.drawable.nova_quality,R.drawable.nova_more)
         val callbacks=listOf<()->Unit>({slider(false)},{sources()},{pictureSize()},{subtitles()},{quality()},{more()})
@@ -193,7 +193,6 @@ class PlayerActivity : AppCompatActivity() {
         tr("Picture-in-picture","عرض مصغر") to {enterMiniPlayer()},
         tr("Speed · ${speed}x","السرعة · ${speed}x") to {sheet(tr("Speed","السرعة"),listOf(.5f,.75f,1f,1.25f,1.5f,2f).map{v->"${v}x" to {speed=v;player?.setPlaybackSpeed(v)}})},
         tr("Aspect ratio","أبعاد الصورة") to {sheet(tr("Picture size","حجم الصورة"),listOf("Fit","Zoom","Fill").mapIndexed{i,l->l to {resize=i;pv.resizeMode=intArrayOf(AspectRatioFrameLayout.RESIZE_MODE_FIT,AspectRatioFrameLayout.RESIZE_MODE_ZOOM,AspectRatioFrameLayout.RESIZE_MODE_FILL)[i]}})},
-        tr("Back 10 seconds","رجوع 10 ثوانٍ") to {player?.seekBack()},tr("Forward 10 seconds","تقديم 10 ثوانٍ") to {player?.seekForward()},
         tr("Audio","الصوت") to {audio()},tr("Volume","مستوى الصوت") to {slider(false)},tr("Brightness","السطوع") to {slider(true)}))}
     private fun slider(bright:Boolean) {
         val audio=getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -227,7 +226,7 @@ class PlayerActivity : AppCompatActivity() {
         player?.release()
         val contexts=(ss.contexts+ss.sources.map{it.context}+ss.subtitles.map{it.context})
         val factory=ScopedMediaHttp.factory(contexts,source.context)
-        val p=ExoPlayer.Builder(this).setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(this,factory))).setSeekBackIncrementMs(10000).setSeekForwardIncrementMs(10000).build()
+        val p=ExoPlayer.Builder(this).setSeekBackIncrementMs(10_000).setSeekForwardIncrementMs(10_000).setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(this,factory))).setSeekBackIncrementMs(10000).setSeekForwardIncrementMs(10000).build()
         val item=MediaItem.Builder().setUri(source.url)
         val mime=when(source.kind){"HLS"->MimeTypes.APPLICATION_M3U8;"DASH"->MimeTypes.APPLICATION_MPD;else->source.mime.takeIf{it.startsWith("video/")||it.startsWith("audio/")}}
         mime?.let{item.setMimeType(it)}

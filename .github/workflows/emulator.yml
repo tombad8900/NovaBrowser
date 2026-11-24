@@ -143,6 +143,7 @@ jobs:
             python3 testpage/vidsrc-check.py
             if [ "$NOVA_PIP_PROBE" = "true" ]; then python3 testpage/pip-check.py || touch shots/regression-failed; fi
             python3 testpage/resource-check.py
+            python3 testpage/transport-check.py || touch shots/regression-failed
             test ! -f shots/regression-failed
             adb logcat -d -s AndroidRuntime:E NovaEngine:I NovaPerf:I ExoPlayerImplInternal:E > shots/crashes.txt
       - uses: actions/upload-artifact@v4
