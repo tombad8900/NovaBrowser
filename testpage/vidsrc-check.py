@@ -1,5 +1,8 @@
 """User-named embed integration probe. Preserve results, never report access as playback."""
-import subprocess,time,re,xml.etree.ElementTree as E
+import subprocess,time,re,os,xml.etree.ElementTree as E
+movie=os.environ.get('NOVA_TMDB_PROBE','')
+if not movie:raise SystemExit(0)
+if not re.fullmatch(r'[0-9]{1,10}',movie):raise ValueError('Invalid movie ID')
 
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=30)
 def snap(label):
@@ -7,7 +10,7 @@ def snap(label):
 def click(node):
  b=list(map(int,re.findall(r'\d+',node.attrib['bounds'])));adb('shell','input','tap',str((b[0]+b[2])//2),str((b[1]+b[3])//2))
 adb('shell','am','force-stop','app.nova.browser');adb('logcat','-c')
-adb('shell','am','start','-a','android.intent.action.VIEW','-d','https://vidsrc.sh/embed/movie?tmdb=1368337','app.nova.browser');time.sleep(20)
+adb('shell','am','start','-a','android.intent.action.VIEW','-d','https://vidsrc.sh/embed/movie?tmdb='+movie,'app.nova.browser');time.sleep(20)
 root=snap('24-vidsrc-page')
 played=False
 for n in root.iter():
