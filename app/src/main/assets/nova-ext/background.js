@@ -15,17 +15,18 @@ function record(d) {
 }
 browser.webRequest.onSendHeaders.addListener(record, {urls:['<all_urls>']}, ['requestHeaders']);
 browser.webRequest.onHeadersReceived.addListener(async d => {
-  if (d.tabId < 0 || d.type === 'main_frame' || d.statusCode < 200 || d.statusCode >= 400) return;
+  if (d.tabId < 0 || d.type === 'main_frame' || d.statusCode < 200) return;
   const r = requests.get(d.requestId) || {url:d.url,headers:{},time:Date.now()};
   const ct = (d.responseHeaders || []).find(h => h.name.toLowerCase() === 'content-type');
   const type = ct ? ct.value.split(';')[0].trim() : '';
   // A misleading extension must not turn an HTML/error response into a video.
-  if (/text\/html|application\/json/i.test(type)) return;
+  const rejected=/text\/html|application\/json/i.test(type)||d.statusCode>=400;
+  if(rejected&&!ext.test(d.url))return;
   const isCandidate = mime.test(type) || ext.test(d.url);
   const segment = /\.(ts|m4s|m4a|aac)(\?|#|$)/i.test(d.url);
-  if (!isCandidate && d.type !== 'media' && !segment) return;
+  if (!isCandidate && !rejected && d.type !== 'media' && !segment) return;
   const token = Date.now().toString(36) + '-' + (++serial);
-  const observation = {t:'resource',token,url:d.url,ct:type,segment,headers:r.headers,time:r.time};
+  const observation = {t:'resource',token,url:d.url,ct:type,segment,rejected,headers:r.headers,time:r.time};
   try { await browser.runtime.sendNativeMessage('nova', observation); } catch (_) { return; }
   if(r.epoch !== (epochs.get(d.tabId)||0)) return;
   const epoch=r.epoch;

@@ -34,6 +34,7 @@ class MainActivity : AppCompatActivity() {
 
     class Tab(val session: GeckoSession) {
         val found = LinkedHashMap<String, Found>()
+        val rejected=linkedSetOf<String>()
         val resources = LinkedHashMap<String, PlaybackSource>()
         val contexts = LinkedHashMap<String, RequestContext>()
         var title = ""
@@ -225,9 +226,10 @@ class MainActivity : AppCompatActivity() {
                         val h = resource.optJSONObject("headers") ?: JSONObject()
                         val headers = h.keys().asSequence().associateWith { h.optString(it) }
                         val context = RequestContext(u, headers, resource.optLong("time", System.currentTimeMillis()))
-                        val kind = if (resource.optBoolean("segment")) "CONTEXT" else Sniffer.classifyMime(u, ct) ?: "CONTEXT"
+                        val kind = if(resource.optBoolean("rejected")) "REJECTED" else if (resource.optBoolean("segment")) "CONTEXT" else Sniffer.classifyMime(u, ct) ?: "CONTEXT"
                         ui.post {
                             if (generation != tab.generation) return@post
+                            if(kind=="REJECTED") {tab.rejected.add(sourceKey(u));tab.found.remove(sourceKey(u));tab.resources.remove(sourceKey(u));if(cur===tab)refreshCounts();return@post}
                             if (tab.contexts.size >= 300) tab.contexts.remove(tab.contexts.keys.first())
                             tab.contexts[sourceKey(u)] = context
                             if (kind == "CONTEXT") return@post
@@ -272,7 +274,7 @@ class MainActivity : AppCompatActivity() {
             override fun onPageStart(session: GeckoSession, u: String) {
                 tab.loadStarted = android.os.SystemClock.elapsedRealtime()
                 tab.generation++
-                tab.found.clear(); tab.resources.clear(); tab.contexts.clear(); tab.url = u
+                tab.found.clear(); tab.resources.clear(); tab.contexts.clear();tab.rejected.clear(); tab.url = u
                 if (cur === tab) { refreshCounts(); if (!urlBar.hasFocus()) urlBar.setText(shown(u)) }
             }
             override fun onPageStop(session: GeckoSession, success: Boolean) {
@@ -387,9 +389,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun addFound(t: Tab, f: Found) {
-        if (t.found.containsKey(f.url)) return
+        val key=sourceKey(f.url)
+        if(key in t.rejected || t.found.containsKey(key)) return
         if (t.found.size > 300) return
-        t.found[f.url] = f
+        t.found[key] = f
         if (cur === t) refreshCounts()
     }
 

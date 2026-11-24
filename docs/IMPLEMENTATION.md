@@ -50,3 +50,5 @@ Visual defect found in first custom layout: Media3 switches to minimal mode when
 
 ## User visual direction Nov24 14:31
 User supplied three screenshots and specifically selected the lower/second player as the professional target: restrained white equal icons, active accent only, floating source/subtitle panel, no giant central play control or separate opaque strip. Shift Nova toward that structure, preserving its own identity. Landscape panels float at right; portrait remains a bottom sheet for usable touch targets. Actual pixel verification required again.
+
+Detector negative evidence now overrides DOM hints: observed HTML/JSON or failed HTTP at a media-looking URL is recorded as rejected for that page generation, removes prior candidate and blocks scan re-addition. Signed queries remain distinct; fragments are deduped. This closes a misleading-source path where a script/link hint could otherwise resurrect a known HTML response.

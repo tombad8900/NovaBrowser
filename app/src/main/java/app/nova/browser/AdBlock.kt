@@ -9,6 +9,7 @@ object AdBlock {
     var extension:WebExtension?=null
     var state="Starting"
     private val waiting=mutableListOf<()->Unit>()
+    private var defaultAction:WebExtension.Action?=null
     private val actions=java.util.WeakHashMap<GeckoSession,WebExtension.Action>()
     fun start(rt:GeckoRuntime) {
         val c=rt.webExtensionController
@@ -25,6 +26,9 @@ object AdBlock {
     }
     private fun ready(e:WebExtension) {
         extension=e;state=if(e.metaData.enabled)"On" else "Off"
+        e.setActionDelegate(object:WebExtension.ActionDelegate {
+            override fun onBrowserAction(extension:WebExtension,session:GeckoSession?,action:WebExtension.Action){defaultAction=action}
+        })
         android.util.Log.i("NovaEngine","Ad filter ready enabled=${e.metaData.enabled}")
         val tasks=waiting.toList();waiting.clear();tasks.forEach{it()}
     }
@@ -37,5 +41,7 @@ object AdBlock {
             }
         })
     }
-    fun show(session:GeckoSession):Boolean {val action=actions[session]?:return false;action.click();return true}
+    fun show(session:GeckoSession):Boolean {val current=actions[session]
+        val action=if(current!=null&&defaultAction!=null)current.withDefault(defaultAction!!) else current?:defaultAction?:return false
+        action.click();return true}
 }
