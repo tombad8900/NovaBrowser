@@ -1,5 +1,7 @@
 """Tap actual control bounds; verify independent player-state telemetry, plus pixels."""
 import subprocess,time,re,xml.etree.ElementTree as E,json
+import runpy
+ui=runpy.run_path('testpage/ui-check.py')
 pkg='app.nova.browser.preview'
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=30)
 def dump():
@@ -8,11 +10,7 @@ def dump():
   if b'dumped to:' in out:return E.fromstring(adb('shell','cat','/sdcard/transport.xml'))
   time.sleep(1)
  shot('failed-ui-dump');raise RuntimeError('UI hierarchy unavailable after bounded retries')
-def tap(label):
- for n in dump().iter():
-  if n.attrib.get('text')==label or n.attrib.get('content-desc')==label:
-   b=list(map(int,re.findall(r'\d+',n.attrib['bounds'])));adb('shell','input','tap',str((b[0]+b[2])//2),str((b[1]+b[3])//2));time.sleep(.4);return
- raise RuntimeError('Missing '+label)
+def tap(label):return ui['tap'](label)
 def shot(n):open('shots/'+n+'.png','wb').write(adb('exec-out','screencap','-p'))
 def state():
  lines=adb('logcat','-d','-s','NovaTouchTest:I','-v','raw').decode().splitlines()
