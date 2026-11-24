@@ -42,8 +42,10 @@ jobs:
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleArm64Debug :app:assembleX64Debug
       - name: Name the APK
-        run: cp app/build/outputs/apk/arm64/debug/app-arm64-debug.apk Nova-${{ github.ref_name }}-arm64.apk
-          cp app/build/outputs/apk/x64/debug/app-x64-debug.apk Nova-${{ github.ref_name }}-x86_64-emulator.apk
+        run: |
+          find app/build/outputs/apk -name '*.apk'
+          cp "$(find app/build/outputs/apk -name '*arm64*debug*.apk' | head -1)" Nova-${{ github.ref_name }}-arm64.apk
+          cp "$(find app/build/outputs/apk -name '*x64*debug*.apk' | head -1)" Nova-${{ github.ref_name }}-x86_64-emulator.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Nova-apk
