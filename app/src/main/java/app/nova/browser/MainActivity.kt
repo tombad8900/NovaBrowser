@@ -251,7 +251,7 @@ class MainActivity : AppCompatActivity() {
             session?.close()
             return cur ?: tabs.first()
         }
-        val s = session ?: GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).useTrackingProtection(true).build())
+        val s = session ?: GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).useTrackingProtection(true).suspendMediaWhenInactive(true).build())
         val tab = Tab(s)
         s.mediaSessionDelegate=object:MediaSession.Delegate {
             override fun onActivated(session:GeckoSession,mediaSession:MediaSession){tab.media=mediaSession}
@@ -303,7 +303,7 @@ class MainActivity : AppCompatActivity() {
             }
             override fun onNewSession(session: GeckoSession, uri: String): GeckoResult<GeckoSession>? {
                 if(tabs.size >= 8) return GeckoResult.fromValue(null)
-                val ns = GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).useTrackingProtection(true).build())
+                val ns = GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).useTrackingProtection(true).suspendMediaWhenInactive(true).build())
                 ui.post { newTab(null, true, ns) }
                 return GeckoResult.fromValue(ns)
             }

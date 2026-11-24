@@ -68,14 +68,14 @@ class PlayerActivity : AppCompatActivity() {
         pv.apply {controllerShowTimeoutMs=6000;setShowSubtitleButton(false)}
         root.addView(pv,FrameLayout.LayoutParams(-1,-1))
         val top=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; setPadding(dp(12),dp(16),dp(12),dp(8));background=android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(0xE610101A.toInt(),0x0010101A)) }
-        top.addView(button("‹") {finish()},LinearLayout.LayoutParams(dp(48),dp(44)))
+        top.addView(button("‹") {finish()}.apply{text="";setCompoundDrawablesWithIntrinsicBounds(R.drawable.nova_back,0,0,0);setPadding(dp(10),0,0,0)},LinearLayout.LayoutParams(dp(48),dp(44)))
         name=TextView(this).apply {text=session!!.title;setTextColor(white);textSize=15f;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END}
         top.addView(name,LinearLayout.LayoutParams(0,dp(44),1f))
         top.addView(button("↻") { requestedOrientation=if(resources.configuration.orientation==2) ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE },LinearLayout.LayoutParams(dp(48),dp(44)))
         root.addView(top,FrameLayout.LayoutParams(-1,-2,Gravity.TOP))
         actions=LinearLayout(this).apply {gravity=Gravity.CENTER;setPadding(dp(6),dp(4),dp(6),dp(8));setBackgroundColor(0xE610101A.toInt())}
         val labels=listOf(tr("Sources","المصادر"),tr("Subtitles","الترجمات"),tr("Quality","الجودة"),tr("More","المزيد"))
-        listOf<()->Unit>({sources()},{subtitles()},{quality()},{more()}).forEachIndexed{i,f ->actions.addView(button(labels[i],f),LinearLayout.LayoutParams(0,dp(44),1f))}
+        listOf<()->Unit>({sources()},{subtitles()},{quality()},{more()}).forEachIndexed{i,f ->actions.addView(button(labels[i],f).apply {setCompoundDrawablesWithIntrinsicBounds(0,intArrayOf(R.drawable.nova_sources,R.drawable.nova_captions,R.drawable.nova_quality,R.drawable.nova_more)[i],0,0);compoundDrawablePadding=dp(5);textSize=11f;setPadding(0,dp(5),0,0)},LinearLayout.LayoutParams(0,dp(56),1f))}
         root.addView(actions,FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM))
         pv.setPadding(0,0,0,0)
         status=TextView(this).apply {setTextColor(white);textSize=16f;gravity=Gravity.CENTER;setPadding(dp(24),dp(20),dp(24),dp(20));setBackgroundColor(0xCC15141D.toInt());visibility=View.GONE}
@@ -163,6 +163,7 @@ class PlayerActivity : AppCompatActivity() {
         item.setSubtitleConfigurations((ss.subtitles+extraSubs).mapIndexed{i,s ->MediaItem.SubtitleConfiguration.Builder(Uri.parse(s.url)).setMimeType(s.mime.ifBlank{Sniffer.mimeForSub(s.url)}).setLanguage(s.language).setLabel(s.label.ifBlank{if(s.language=="ar")"العربية" else "Subtitle ${i+1}"}).build()})
         status.text=tr("Opening source…","جارٍ فتح المصدر…");status.visibility=View.VISIBLE
         p.addListener(object:Player.Listener {
+            override fun onIsPlayingChanged(playing:Boolean){pv.controllerShowTimeoutMs=if(playing)6000 else 0}
             override fun onPlaybackStateChanged(state:Int){if(state==Player.STATE_READY)status.visibility=View.GONE}
             override fun onPlayerError(e:PlaybackException){status.text=when(e.errorCode){PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS->tr("The server refused this request. Return to the page or choose another source.","رفض الخادم طلب التشغيل. ارجع للصفحة أو اختر مصدراً آخر.");PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED->tr("This response is not a valid stream. Choose another source or return to the page.","الاستجابة ليست بثاً صالحاً. اختر مصدراً آخر أو ارجع للصفحة.");else->tr("Couldn't play this source. Tap here to retry, or choose Sources.","تعذر تشغيل المصدر. اضغط هنا للمحاولة أو اختر المصادر.")};status.visibility=View.VISIBLE;status.setOnClickListener{play(sourceIndex,player?.currentPosition?:0)}}
         })
