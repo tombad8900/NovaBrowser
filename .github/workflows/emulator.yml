@@ -66,10 +66,14 @@ jobs:
             adb shell am start -a android.intent.action.VIEW -d https://egybest.website/ app.nova.browser
             sleep 15
             adb exec-out screencap -p > shots/11-reported-site.png
-            adb shell input tap 182 617
+            adb shell uiautomator dump /sdcard/site.xml && adb pull /sdcard/site.xml shots/site.xml
+            adb shell input tap $(python3 testpage/tap-label.py shots/site.xml '◇')
             sleep 2
             adb exec-out screencap -p > shots/12-protection.png
             adb shell uiautomator dump /sdcard/shield.xml && adb pull /sdcard/shield.xml shots/shield.xml
+            adb shell input tap $(python3 testpage/tap-label.py shots/shield.xml 'uBlock Origin')
+            sleep 3
+            adb exec-out screencap -p > shots/13-ublock-controls.png
             adb shell dumpsys meminfo app.nova.browser > shots/memory.txt
             adb shell dumpsys gfxinfo app.nova.browser > shots/frames.txt
             adb logcat -d -s AndroidRuntime:E NovaEngine:I NovaPerf:I ExoPlayerImplInternal:E > shots/crashes.txt

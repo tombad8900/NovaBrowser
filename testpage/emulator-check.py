@@ -25,6 +25,9 @@ tap('Rotate');time.sleep(2);shot('8-landscape')
 tap('Subtitles');expect('العربية');shot('8b-landscape-subs');adb('shell','input','keyevent','KEYCODE_BACK')
 tap('Sources');expect('Playback sources');shot('8c-landscape-sources');adb('shell','input','keyevent','KEYCODE_BACK')
 adb('shell','input','keyevent','KEYCODE_BACK')
+# Back to portrait browser before any additional website checks.
+adb('shell','settings','put','system','accelerometer_rotation','0')
+adb('shell','settings','put','system','user_rotation','0')
 
 log=adb('logcat','-d','-s','AndroidRuntime:E','ExoPlayerImplInternal:E').decode(errors='replace')
 open('shots/player-errors.txt','w').write(log)
