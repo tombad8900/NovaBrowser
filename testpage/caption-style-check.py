@@ -11,7 +11,11 @@ def launch():
   time.sleep(1)
  else:raise RuntimeError('Caption source did not become ready')
  time.sleep(4)
-launch();shot('30-caption-default');adb('shell','input','keyevent','KEYCODE_BACK')
+launch();shot('30-caption-default')
+adb('shell','input','tap','160','110');time.sleep(.5);shot('30b-caption-portrait-hidden')
+adb('shell','input','tap','160','110');adb('shell','settings','put','system','accelerometer_rotation','0');adb('shell','settings','put','system','user_rotation','1');time.sleep(2);shot('30c-caption-landscape-shown')
+adb('shell','input','tap','320','90');time.sleep(.5);shot('30d-caption-landscape-hidden')
+adb('shell','settings','put','system','user_rotation','0');adb('shell','input','keyevent','KEYCODE_BACK')
 tap('القائمة');tap('الإعدادات');tap('التشغيل');tap('حجم الخط')
 # Native SeekBar receives keyboard input, not a hidden preference mutation.
 r=ui['snapshot']();bar=next(n for n in r.iter() if n.attrib.get('class')=='android.widget.SeekBar');b=list(map(int,re.findall(r'\d+',bar.attrib['bounds'])))
