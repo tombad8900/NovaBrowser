@@ -19,7 +19,9 @@ def tap(label):
   if n.attrib.get('text','').removeprefix('✓  ').strip()==label.strip() or n.attrib.get('content-desc')==label:
    b=list(map(int,re.findall(r'\d+',n.attrib['bounds'])));adb('shell','input','tap',str((b[0]+b[2])//2),str((b[1]+b[3])//2));return
  raise RuntimeError('Missing '+label)
-adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/switch.html','app.nova.browser');time.sleep(5)
+adb('shell','am','force-stop','app.nova.browser')
+adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/switch.html','app.nova.browser');time.sleep(8)
+if not any('Source switch consent regression' in n.attrib.get('text','') for n in root().iter()):raise RuntimeError('Mixed-source fixture not active')
 tap('Play in Nova');time.sleep(3)
 adb('shell','input','tap','36','608');tap('Sources');tap('TORRENT · ')
 
