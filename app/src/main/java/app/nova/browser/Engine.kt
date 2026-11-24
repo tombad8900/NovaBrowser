@@ -44,12 +44,6 @@ object Engine {
             .build()
         val rt = GeckoRuntime.create(ctx.applicationContext, settings)
         runtime = rt
-        rt.webExtensionController.promptDelegate = object : WebExtensionController.PromptDelegate {
-            override fun onInstallPromptRequest(e: WebExtension, perms: Array<out String>, origins: Array<out String>, data: Array<out String>): GeckoResult<WebExtension.PermissionPromptResponse>? {
-                Log.i(TAG, "install prompt for ${e.id}: perms=${perms.toList()} origins=${origins.toList()}")
-                return GeckoResult.fromValue(WebExtension.PermissionPromptResponse(true, false, false))
-            }
-        }
         rt.webExtensionController.ensureBuiltIn("resource://android/assets/nova-ext/", EXT_ID).accept({ e ->
             Log.i(TAG, "detector extension ready: ${e?.id}")
             if (e != null) { ext = e; main.post { val l = waiting.toList(); waiting.clear(); l.forEach { it(e) } } }
@@ -62,15 +56,4 @@ object Engine {
         if (e != null) cb(e) else waiting.add(cb)
     }
 
-    /** Experimental: installs uBlock Origin from AMO and reports the outcome. Not part of the default setup. */
-    fun installUblock(ctx: Context, report: (String) -> Unit) {
-        val rt = get(ctx)
-        rt.webExtensionController.install("https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi").accept({ e ->
-            Log.i(TAG, "UBLOCK_INSTALL_OK id=${e?.id} name=${e?.metaData?.name}")
-            main.post { report("uBlock Origin installed") }
-        }, { t ->
-            Log.e(TAG, "UBLOCK_INSTALL_FAILED", t)
-            main.post { report("uBlock Origin install failed: ${t?.message}") }
-        })
-    }
 }

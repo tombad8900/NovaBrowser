@@ -30,7 +30,7 @@ jobs:
           script: |
             adb install -r app/build/outputs/apk/x64/debug/app-x64-debug.apk
             adb shell am start -n app.nova.browser/.MainActivity
-            sleep 8
+            sleep 20
             mkdir -p shots
             adb exec-out screencap -p > shots/1-home.png
             adb shell am start -a android.intent.action.VIEW -d https://example.com app.nova.browser

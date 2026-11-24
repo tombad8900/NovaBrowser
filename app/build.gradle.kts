@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "app.nova.browser"
-    compileSdk = 34
+    compileSdk = 37
     defaultConfig {
         applicationId = "app.nova.browser"
         minSdk = 26
@@ -54,9 +54,5 @@ android.testOptions.unitTests.all {
     it.jvmArgs("-Djava.library.path=" + (System.getenv("NOVA_NATIVE_DIR") ?: ""))
     it.testLogging { events("passed", "failed", "skipped"); showStandardStreams = true }
 }
-
-// GeckoView 160 and the media3 it pulls in declare a newer compileSdk than AGP 8.2 supports. The code
-// we compile only uses stable APIs, so skip that metadata check instead of upgrading the whole toolchain.
-tasks.configureEach { if (name.startsWith("check") && name.endsWith("AarMetadata")) enabled = false }
 
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }

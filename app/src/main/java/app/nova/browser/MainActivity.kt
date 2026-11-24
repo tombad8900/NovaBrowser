@@ -196,7 +196,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun newTab(url: String?, switchTo: Boolean = true, session: GeckoSession? = null): Tab {
-        val s = session ?: GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).build())
+        val s = session ?: GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).useTrackingProtection(true).build())
         val tab = Tab(s)
         s.progressDelegate = object : GeckoSession.ProgressDelegate {
             override fun onPageStart(session: GeckoSession, u: String) {
@@ -229,7 +229,7 @@ class MainActivity : AppCompatActivity() {
                 return GeckoResult.deny()
             }
             override fun onNewSession(session: GeckoSession, uri: String): GeckoResult<GeckoSession>? {
-                val ns = GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).build())
+                val ns = GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).useTrackingProtection(true).build())
                 ui.post { newTab(null, true, ns) }
                 return GeckoResult.fromValue(ns)
             }
@@ -260,7 +260,7 @@ class MainActivity : AppCompatActivity() {
         if (switchTo) switchTo(tab)
         if (session == null) {
             if (url != null) s.load(GeckoSession.Loader().uri(url))
-            else s.load(GeckoSession.Loader().data(homeHtml(), "text/html"))
+            else s.load(GeckoSession.Loader().uri("data:text/html;charset=utf-8;base64," + android.util.Base64.encodeToString(homeHtml().toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)).flags(GeckoSession.LOAD_FLAGS_FORCE_ALLOW_DATA_URI))
         }
         return tab
     }
@@ -379,7 +379,6 @@ class MainActivity : AppCompatActivity() {
                 t.session.reload()
             })
             item(l, "Tracking protection: strict (ads, trackers, fingerprinting, crypto-miners)", "Gecko Enhanced Tracking Protection + Global Privacy Control. Per-site exceptions are not built yet.", {})
-            item(l, "Install uBlock Origin (experimental)", "Downloads it from addons.mozilla.org and asks Gecko to install it", { d.dismiss(); Engine.installUblock(this) { msg -> Toast.makeText(this, msg, Toast.LENGTH_LONG).show() } })
             item(l, "Play a magnet link / torrent URL", null, { d.dismiss(); askMagnet() })
             item(l, "Share page", null, {
                 d.dismiss(); startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, t.url), "Share"))

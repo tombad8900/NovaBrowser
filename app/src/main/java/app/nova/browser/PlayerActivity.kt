@@ -62,12 +62,12 @@ class PlayerActivity : AppCompatActivity() {
         root.addView(status, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
         val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(16, 16, 16, 16) }
         fun chip(t: String, f: (TextView) -> Unit) = TextView(this).apply {
-            text = t; setTextColor(0xFFFFFFFF.toInt()); textSize = 13f; setPadding(24, 12, 24, 12)
+            text = t; setTextColor(0xFFFFFFFF.toInt()); textSize = 13f; setPadding(12, 12, 12, 12)
             setBackgroundColor(0x88000000.toInt()); setOnClickListener { f(this) }
             layoutParams = LinearLayout.LayoutParams(-2, -2).apply { rightMargin = 12 }
         }
         bar.addView(chip("‹ Back") { finish() })
-        bar.addView(chip("Subtitle file") { pickSub.launch(arrayOf("*/*")) })
+        bar.addView(chip("Sub file") { pickSub.launch(arrayOf("*/*")) })
         bar.addView(chip("1x") { v -> speedIdx = (speedIdx + 1) % speeds.size; player?.setPlaybackSpeed(speeds[speedIdx]); v.text = "${speeds[speedIdx]}x" })
         bar.addView(chip("Fit") { v -> resizeIdx = (resizeIdx + 1) % resizes.size; pv.resizeMode = resizes[resizeIdx]; v.text = listOf("Fit", "Zoom", "Fill")[resizeIdx] })
         root.addView(bar, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START))
@@ -96,7 +96,7 @@ class PlayerActivity : AppCompatActivity() {
         val wasTorrentStats = isTorrent
         val ua = intent.getStringExtra("ua") ?: "Nova"
         val headers = HashMap<String, String>()
-        intent.getStringExtra("referer")?.takeIf { it.startsWith("http") }?.let { headers["Referer"] = it; headers["Origin"] = Uri.parse(it).let { u -> "${u.scheme}://${u.host}" } }
+        // No page context headers are forwarded: redirects could expose private page URLs.
         val http = DefaultHttpDataSource.Factory().setUserAgent(ua).setAllowCrossProtocolRedirects(true)
             .setDefaultRequestProperties(if (isTorrent) emptyMap() else headers)
             .setConnectTimeoutMs(15000).setReadTimeoutMs(if (isTorrent) 180000 else 20000)
