@@ -151,7 +151,7 @@ class PlayerActivity : AppCompatActivity() {
         }
         player?.release()
         val contexts=(ss.contexts+ss.sources.map{it.context}+ss.subtitles.map{it.context})
-        val factory=ScopedMediaHttp.factory(contexts)
+        val factory=ScopedMediaHttp.factory(contexts,source.context)
         val p=ExoPlayer.Builder(this).setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(this,factory))).build()
         val item=MediaItem.Builder().setUri(source.url)
         val mime=source.mime.takeIf{it.isNotBlank()}?:when(source.kind){"HLS"->MimeTypes.APPLICATION_M3U8;"DASH"->MimeTypes.APPLICATION_MPD;else->null}

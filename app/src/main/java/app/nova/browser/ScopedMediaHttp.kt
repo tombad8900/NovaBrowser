@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit
 
 /** Re-evaluate destination on every network hop, including redirects and subtitle/segment loads. */
 object ScopedMediaHttp {
-    fun factory(contexts: List<RequestContext>): OkHttpDataSource.Factory {
+    fun factory(contexts: List<RequestContext>, active: RequestContext? = null): OkHttpDataSource.Factory {
         val client = OkHttpClient.Builder().connectTimeout(15,TimeUnit.SECONDS).readTimeout(30,TimeUnit.SECONDS)
             .followSslRedirects(false)
             .addNetworkInterceptor { chain ->
@@ -14,7 +14,7 @@ object ScopedMediaHttp {
                 val req = chain.request().newBuilder()
                 RequestContext.ALLOWED.forEach { req.removeHeader(it) }
                 val ctx = contexts.lastOrNull { sourceKey(it.url) == sourceKey(target) }
-                    ?: contexts.lastOrNull { it.matches(target) }
+                    ?: active?.takeIf { it.matches(target) }
                 ctx?.safeHeaders(target)?.forEach { (k,v) -> req.header(k,v) }
                 if (ctx == null) req.header("User-Agent", "Nova/0.3")
                 val response = chain.proceed(req.build())

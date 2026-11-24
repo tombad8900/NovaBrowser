@@ -523,5 +523,7 @@ class MainActivity : AppCompatActivity() {
         startActivity(i)
     }
 
-    override fun onDestroy() { tabs.forEach { it.session.close() }; super.onDestroy() }
+    override fun onPause(){super.onPause();cur?.session?.setActive(false)}
+    override fun onResume(){super.onResume();cur?.session?.setActive(true)}
+    override fun onDestroy() { tabs.forEach { it.session.close() };store.close(); super.onDestroy() }
 }

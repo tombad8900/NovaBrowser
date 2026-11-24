@@ -54,6 +54,8 @@ class Store(ctx: Context) {
         p.edit().putStringSet("protectionOff", set).apply(); return on
     }
 
+    fun close(){historyWorker.shutdown()}
+
     var adblock: Boolean
         get() = p.getBoolean("adblock", true)
         set(v) { p.edit().putBoolean("adblock", v).apply() }

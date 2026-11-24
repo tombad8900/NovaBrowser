@@ -7,7 +7,8 @@ import java.util.concurrent.ConcurrentHashMap
 /** A request observation stays attached to its own resource. Never persist credentials. */
 data class RequestContext(val url: String, val headers: Map<String, String>, val observedAt: Long = System.currentTimeMillis()) {
     fun matches(target: String): Boolean = try {
-        val a = URI(url); val b = URI(target)
+        val a = URI(url).normalize(); val b = URI(target).normalize()
+        if(a.rawPath.contains("%2f",true)||b.rawPath.contains("%2f",true)||a.rawPath.contains("%2e",true)||b.rawPath.contains("%2e",true)) throw IllegalArgumentException("Encoded path boundary")
         a.scheme.equals(b.scheme, true) && a.host.equals(b.host, true) && a.port == b.port &&
             (a.path == b.path || b.path.startsWith(a.path.substringBeforeLast('/', "") + "/"))
     } catch (_: Exception) { false }
@@ -35,7 +36,11 @@ object PlaybackSessions {
         if (sessions.size >= 8) sessions.keys.firstOrNull()?.let { sessions.remove(it) }
         sessions[session.id] = session; return session.id
     }
-    fun get(id: String?) = id?.let { sessions[it] }
+    fun get(id: String?): PlaybackSession? {
+        val s=id?.let{sessions[it]}?:return null
+        if(System.currentTimeMillis()-s.createdAt>30*60_000L){sessions.remove(id);return null}
+        return s
+    }
     fun remove(id: String?) { if (id != null) sessions.remove(id) }
 }
 
