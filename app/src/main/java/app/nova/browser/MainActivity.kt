@@ -44,6 +44,8 @@ class MainActivity : AppCompatActivity() {
         var generation = 0L
         var loadStarted = 0L
         var media:MediaSession?=null
+        var savedState:GeckoSession.SessionState?=null
+        var recovering=false
         var canBack = false
         var canFwd = false
     }
@@ -278,6 +280,8 @@ class MainActivity : AppCompatActivity() {
             override fun onDeactivated(session:GeckoSession,mediaSession:MediaSession){tab.media=null}
         }
         s.progressDelegate = object : GeckoSession.ProgressDelegate {
+            override fun onSessionStateChange(session:GeckoSession,state:GeckoSession.SessionState){tab.savedState=state}
+
             override fun onPageStart(session: GeckoSession, u: String) {
                 tab.loadStarted = android.os.SystemClock.elapsedRealtime()
                 tab.generation++
@@ -285,6 +289,7 @@ class MainActivity : AppCompatActivity() {
                 if (cur === tab) { refreshCounts(); if (!urlBar.hasFocus()) urlBar.setText(shown(u)) }
             }
             override fun onPageStop(session: GeckoSession, success: Boolean) {
+                if(success)tab.recovering=false
                 android.util.Log.i("NovaPerf", "Page stop success=$success elapsedMs=${android.os.SystemClock.elapsedRealtime()-tab.loadStarted} tabs=${tabs.size} captures=${tab.found.size}")
                 if (success && tab.url.startsWith("http")) store.addHistory(tab.title, tab.url)
                 if (!success && cur === tab) Toast.makeText(this@MainActivity,tr("Page couldn't finish loading. Reload or check site protection.","تعذر إكمال تحميل الصفحة. أعد التحميل أو راجع حماية الموقع."),Toast.LENGTH_LONG).show()
@@ -329,6 +334,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
         s.contentDelegate = object : GeckoSession.ContentDelegate {
+            override fun onCrash(session:GeckoSession){recoverTab(tab)}
+            override fun onKill(session:GeckoSession){recoverTab(tab)}
             override fun onTitleChange(session: GeckoSession, t: String?) { tab.title = t ?: "" }
             override fun onFullScreen(session: GeckoSession, full: Boolean) {
                 inFullscreen = full
@@ -371,14 +378,27 @@ class MainActivity : AppCompatActivity() {
     private fun shown(u: String) = if (u.startsWith("data:") || u.startsWith("about:") || u.contains("nova.home")) "" else u
 
     private fun switchTo(t: Tab) {
-        cur?.session?.let{it.setActive(false);Engine.get(this).webExtensionController.setTabActive(it,false)}
+        cur?.session?.let{it.setPriorityHint(GeckoSession.PRIORITY_DEFAULT);it.setActive(false);Engine.get(this).webExtensionController.setTabActive(it,false)}
         geckoView.releaseSession()
         geckoView.setSession(t.session)
+        t.session.setPriorityHint(GeckoSession.PRIORITY_HIGH)
         t.session.setActive(true)
         Engine.get(this).webExtensionController.setTabActive(t.session,true)
         cur = t
         urlBar.setText(shown(t.url))
         refreshCounts()
+    }
+
+    private fun recoverTab(tab:Tab){
+        if(isFinishing||isDestroyed||tab !in tabs||tab.recovering)return
+        tab.recovering=true
+        tab.found.clear();tab.resources.clear();tab.contexts.clear();tab.rejected.clear();tab.generation++
+        try{
+            if(!tab.session.isOpen)tab.session.open(Engine.get(this))
+            tab.savedState?.let{tab.session.restoreState(it)}?:tab.url.takeIf{it.startsWith("http")}?.let{tab.session.loadUri(it)}
+            if(cur===tab){geckoView.releaseSession();geckoView.setSession(tab.session);tab.session.setActive(true);refreshCounts();Toast.makeText(this,tr("This tab was reloaded after its process stopped.","أُعيد تحميل علامة التبويب بعد توقف عمليتها."),Toast.LENGTH_LONG).show()}
+            else tab.session.setActive(false)
+        }catch(_:Exception){tab.recovering=false;android.util.Log.w("NovaEngine","Tab recovery could not finish")}
     }
 
     private fun closeTab(t: Tab) {

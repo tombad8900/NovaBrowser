@@ -86,6 +86,7 @@ jobs:
             python3 testpage/frame-check.py
             adb shell input keyevent KEYCODE_BACK
             python3 testpage/torrent-consent-check.py
+            python3 testpage/recovery-check.py
             adb shell dumpsys meminfo app.nova.browser > shots/memory.txt
             adb shell dumpsys meminfo --package app.nova.browser > shots/all-process-memory.txt
             adb shell dumpsys gfxinfo app.nova.browser > shots/frames.txt
