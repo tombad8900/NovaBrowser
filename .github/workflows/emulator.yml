@@ -92,13 +92,14 @@ jobs:
             adb shell uiautomator dump /sdcard/frame.xml && adb pull /sdcard/frame.xml shots/frame.xml
             python3 testpage/frame-check.py
             adb shell input keyevent KEYCODE_BACK
-            python3 testpage/torrent-consent-check.py
-            python3 testpage/recovery-check.py
+            python3 testpage/torrent-consent-check.py || touch shots/regression-failed
+            python3 testpage/recovery-check.py || touch shots/regression-failed
             adb shell dumpsys meminfo app.nova.browser > shots/memory.txt
             adb shell dumpsys meminfo --package app.nova.browser > shots/all-process-memory.txt
             adb shell dumpsys gfxinfo app.nova.browser > shots/frames.txt
-            python3 testpage/external-check.py
+            python3 testpage/external-check.py || touch shots/regression-failed
             python3 testpage/vidsrc-check.py
+            test ! -f shots/regression-failed
             adb logcat -d -s AndroidRuntime:E NovaEngine:I NovaPerf:I ExoPlayerImplInternal:E > shots/crashes.txt
       - uses: actions/upload-artifact@v4
         if: always()

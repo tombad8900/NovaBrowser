@@ -1,7 +1,8 @@
 import subprocess,time,re
 
 def adb(*args):return subprocess.check_output(['adb',*args],timeout=30)
-# Existing frame tab is current; don't exceed the explicit eight-tab limit.
+# Establish the page explicitly; preceding regression tests may navigate.
+adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/frame.html','app.nova.browser');time.sleep(4)
 adb('shell','uiautomator','dump','/sdcard/before-recovery.xml')
 before=adb('shell','cat','/sdcard/before-recovery.xml').decode()
 if 'Iframe detector' not in before:raise RuntimeError('Recovery precondition: frame tab is not active')
