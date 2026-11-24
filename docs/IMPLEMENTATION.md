@@ -45,3 +45,5 @@ User saw an unopened-session assertion while simply opening a website. The match
 
 ## Visual references inspected
 Actual imagery, separate from source inspection: SkyStream OSD and volume panel in https://github.com/akashdh11/skystream/issues/103 (TV/controller UI, proposal screenshot); subtitle appearance in issue99. Zangetsu phone player in https://github.com/Spyou/Zangetsu/issues/128 (shows controls and subtitle bug, not proof of current release behavior). CloudStream phone player in https://github.com/recloudstream/cloudstream/pull/2474 . Nova uses its own lavender/ink palette, larger central playback action, clean timeline and dedicated panel strip. No images/assets or UI code from these references copied.
+
+Visual defect found in first custom layout: Media3 switches to minimal mode when center/time widths equal the whole player width. That hid rewind/forward and the whole timeline. Use measured wrap-content center/time groups; timeline is a sibling, not nested inside the bottom bar that Media3 animates. Verify pixels again before calling this fixed.
