@@ -39,7 +39,7 @@ browser.webRequest.onHeadersReceived.addListener(async d => {
 }, {urls:['<all_urls>']}, ['responseHeaders']);
 browser.webRequest.onCompleted.addListener(d=>requests.delete(d.requestId),{urls:['<all_urls>']});
 browser.webRequest.onErrorOccurred.addListener(d=>requests.delete(d.requestId),{urls:['<all_urls>']});
-browser.webRequest.onBeforeRequest.addListener(d=>{if(d.type==='main_frame'){pending.delete(d.tabId);playlistDirs.delete(d.tabId);trackUrls.delete(d.tabId);epochs.set(d.tabId,(epochs.get(d.tabId)||0)+1);}},{urls:['<all_urls>']});
+browser.webRequest.onBeforeRequest.addListener(d=>{if(d.type==='main_frame'){pending.delete(d.tabId);playlistDirs.delete(d.tabId);trackUrls.delete(d.tabId);epochs.set(d.tabId,(epochs.get(d.tabId)||0)+1);}else{record(d);}},{urls:['<all_urls>']});
 browser.tabs.onRemoved.addListener(id=>{pending.delete(id);epochs.delete(id);playlistDirs.delete(id);trackUrls.delete(id);});
 browser.runtime.onMessage.addListener((m,s)=>{
  if(!m||!s.tab)return;

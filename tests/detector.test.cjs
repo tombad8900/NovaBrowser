@@ -34,6 +34,18 @@ async function test(){
  listeners.send({...base,requestId:'caption',url:'https://cdn.test/caption?id=ar',requestHeaders:[{name:'Cookie',value:'sub=one'}]});
  await listeners.response({...base,requestId:'caption',url:'https://cdn.test/caption?id=ar',responseHeaders:[{name:'Content-Type',value:'text/plain'}]});
  assert.equal(native.length,countNative+1);assert.equal(native.at(-1).track,true);assert.equal(native.at(-1).headers.Cookie,'sub=one');
+ // Response association must not depend on a sendHeaders event (e.g. cache path).
+ const cached={...base,requestId:'cached',url:'https://cdn.test/cached/index.mpd?audio_language=ar'};
+ listeners.before(cached);
+ const beforeCached=forwarded.length;
+ await listeners.response({...cached,responseHeaders:[{name:'Content-Type',value:'application/dash+xml'}]});
+ assert.equal(forwarded.length,beforeCached+1);assert.equal(native.at(-1).url,cached.url);
+ assert.equal(Object.keys(native.at(-1).headers).length,0);
+ const staleCached={...cached,requestId:'stale-cached'};
+ listeners.before(staleCached);listeners.before({...base,type:'main_frame'});
+ const beforeStale=forwarded.length;
+ await listeners.response({...staleCached,responseHeaders:[{name:'Content-Type',value:'application/dash+xml'}]});
+ assert.equal(forwarded.length,beforeStale);
  console.log('PASS detector header privacy, HTML rejection, segment context, navigation generation');
 }
 test().catch(e=>{console.error(e);process.exit(1)});
