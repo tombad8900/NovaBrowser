@@ -7,8 +7,14 @@ def dump():
  raw=adb('shell','cat','/sdcard/transport.xml');open('shots/transport-last.xml','wb').write(raw);return E.fromstring(raw)
 def bounds(n):return list(map(int,re.findall(r'\d+',n.attrib['bounds'])))
 def find(id):
- for n in dump().iter():
-  if n.attrib.get('resource-id','').endswith('/'+id) or n.attrib.get('content-desc')==id or n.attrib.get('text')==id:return n
+ for attempt in range(2):
+  root=dump()
+  for n in root.iter():
+   if n.attrib.get('resource-id','').endswith('/'+id) or n.attrib.get('content-desc')==id or n.attrib.get('text')==id:return n
+  # PlayerView's own accessibility action is a real reveal affordance.
+  reveal=next((n for n in root.iter() if n.attrib.get('content-desc')=='Show player controls'),None)
+  if reveal is None:break
+  b=bounds(reveal);adb('shell','input','tap',str((b[0]+b[2])//2),str(b[1]+max(80,(b[3]-b[1])//5)));time.sleep(.2)
  shot('24-failed-lookup');raise RuntimeError('Missing transport '+id)
 def tap(id):
  n=find(id);b=bounds(n);adb('shell','input','tap',str((b[0]+b[2])//2),str((b[1]+b[3])//2));time.sleep(.5)
@@ -23,9 +29,6 @@ for rtl in [0,1]:
  tap('Play in Nova');time.sleep(4)
  for orientation in ['portrait','landscape']:
   if orientation=='landscape':tap('Rotate');time.sleep(2)
-  # Revealing controls may hide them if already shown. Resolve from actual view state.
-  try:find('exo_play_pause')
-  except RuntimeError:adb('shell','input','tap','160','260');time.sleep(.3)
   pause=find('exo_play_pause').attrib.get('content-desc','')
   tap('exo_play_pause')
   after=find('exo_play_pause').attrib.get('content-desc','')
@@ -43,7 +46,6 @@ for rtl in [0,1]:
     for b in controls:assert b[3]<=v[1] or b[1]>=v[3] or b[2]<=v[0] or b[0]>=v[2],'Volume overlaps transport'
   shot('24-transport-'+str(rtl)+'-'+orientation)
   results.append({'forcedRTL':bool(rtl),'orientation':orientation,'before':before,'forward':forward,'back':back,'targets':controls,'pauseDescription':after})
-  tap('exo_play_pause')
  adb('shell','input','keyevent','KEYCODE_BACK')
 adb('shell','settings','put','global','debug.force_rtl','0')
 open('shots/transport-results.json','w').write(json.dumps(results,indent=2))
