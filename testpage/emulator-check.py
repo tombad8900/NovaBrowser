@@ -6,7 +6,7 @@ def dump():
  adb('shell','uiautomator','dump','/sdcard/current.xml');return ET.fromstring(adb('shell','cat','/sdcard/current.xml'))
 def tap(label):
  for n in dump().iter():
-  if n.attrib.get('text','').removeprefix('✓  ')==label or n.attrib.get('content-desc','')==label:
+  if n.attrib.get('text','').removeprefix('✓  ')==label or n.attrib.get('content-desc','').removeprefix('✓  ')==label:
    b=list(map(int,re.findall(r'\d+',n.attrib['bounds'])));adb('shell','input','tap',str((b[0]+b[2])//2),str((b[1]+b[3])//2));return
  raise RuntimeError('Missing control '+label)
 def controls():

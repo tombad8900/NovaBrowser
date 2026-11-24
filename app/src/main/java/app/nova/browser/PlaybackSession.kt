@@ -23,7 +23,11 @@ data class PlaybackSource(
     val id: String = UUID.randomUUID().toString(), val url: String, val kind: String,
     val mime: String = "", val language: String = "und", val label: String = "",
     val context: RequestContext = RequestContext(url, emptyMap()), val evidence: String = "hint"
-)
+) {
+    val networkObserved get() = evidence=="network" || evidence=="track+network"
+    val hasRequestHeaders get() = context.headers.isNotEmpty()
+    // Observation is not player readiness; only Media3 can confirm loading/decoding.
+}
 
 data class PlaybackSession(val id: String = UUID.randomUUID().toString(), val title: String,
     val pageUrl: String, val sources: List<PlaybackSource>, val subtitles: List<PlaybackSource>,

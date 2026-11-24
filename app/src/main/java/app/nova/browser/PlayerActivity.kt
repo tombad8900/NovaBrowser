@@ -103,7 +103,7 @@ class PlayerActivity : AppCompatActivity() {
         val d:android.app.Dialog=if(resources.configuration.orientation==2) android.app.Dialog(this) else BottomSheetDialog(this)
         val column=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(10),dp(16),dp(10));background=android.graphics.drawable.GradientDrawable().apply{setColor(0xD9101018.toInt());cornerRadius=dp(20).toFloat();setStroke(dp(1),0xFF35313F.toInt())}}
         if(resources.configuration.orientation!=2)column.addView(TextView(this).apply{text=title;setTextColor(white);textSize=18f;setPadding(0,dp(8),0,dp(18))})
-        rows.forEach{(label,action)->column.addView(TextView(this).apply{text=label;setTextColor(white);textSize=16f;setPadding(dp(8),dp(16),dp(8),dp(16));setOnClickListener{d.dismiss();action()}},LinearLayout.LayoutParams(-1,-2))}
+        rows.forEach{(label,action)->column.addView(TextView(this).apply{text=label;contentDescription=label.substringBefore('\n');setTextColor(white);textSize=16f;setPadding(dp(8),dp(16),dp(8),dp(16));setOnClickListener{d.dismiss();action()}},LinearLayout.LayoutParams(-1,-2))}
         val handle=View(this).apply{background=android.graphics.drawable.GradientDrawable().apply{setColor(0xFF514A66.toInt());cornerRadius=dp(3).toFloat()}}
         if(resources.configuration.orientation!=2)column.addView(handle,0,LinearLayout.LayoutParams(dp(34),dp(4)).apply{gravity=Gravity.CENTER_HORIZONTAL;bottomMargin=dp(14)})
         d.setContentView(ScrollView(this).apply{addView(column)});d.show()
@@ -113,7 +113,7 @@ class PlayerActivity : AppCompatActivity() {
     private fun sources() {
         sheet(tr("Playback sources","مصادر التشغيل"),session!!.sources.mapIndexed{i,s ->
             val host=runCatching{Uri.parse(s.url).host}.getOrNull().orEmpty()
-            ((if(i==sourceIndex)"✓  " else "")+s.kind+" · "+host) to {play(i,player?.currentPosition?:0)}
+            ((if(i==sourceIndex)"✓  " else "")+s.kind+" · "+host+"\n"+if(s.networkObserved)tr("Observed request","طلب مرصود") else tr("Page hint, not verified","إشارة من الصفحة، لم تُتحقق")) to {play(i,player?.currentPosition?:0)}
         })
     }
     private fun quality() {
