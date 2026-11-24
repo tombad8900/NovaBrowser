@@ -84,7 +84,7 @@ class PlayerActivity : AppCompatActivity() {
         root.addView(status,FrameLayout.LayoutParams(-1,-2,Gravity.CENTER))
         pv.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { v ->
             top.visibility=v;actions.visibility=v
-            pv.subtitleView?.setBottomPaddingFraction(if(v==View.VISIBLE) {if(resources.configuration.orientation==2).34f else .24f} else .08f)
+            positionSubtitles(v==View.VISIBLE)
         })
         setContentView(root)
         sourceIndex=savedInstanceState?.getInt("source")?:0
@@ -132,12 +132,12 @@ class PlayerActivity : AppCompatActivity() {
             sheet(tr("Subtitles","الترجمات"),rows);return
         }
         val dialog=android.app.Dialog(this)
-        val outer=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(20),dp(16),dp(20),dp(16));background=android.graphics.drawable.GradientDrawable().apply{setColor(0xF0101018.toInt());cornerRadius=dp(22).toFloat();setStroke(dp(1),0xFF35313F.toInt())}}
-        outer.addView(TextView(this).apply{text=tr("Subtitles","الترجمات");textSize=18f;setTextColor(white);setPadding(0,0,0,dp(16))})
+        val outer=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(18),dp(12),dp(18),dp(10));background=android.graphics.drawable.GradientDrawable().apply{setColor(0xF0101018.toInt());cornerRadius=dp(22).toFloat();setStroke(dp(1),0xFF35313F.toInt())}}
+        outer.addView(TextView(this).apply{text=tr("Subtitles","الترجمات");textSize=18f;setTextColor(white);setPadding(0,0,0,dp(8))})
         val body=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
         val languages=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
         val files=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(14),0,0,0)}
-        body.addView(ScrollView(this).apply{addView(languages)},LinearLayout.LayoutParams(dp(112),-1))
+        body.addView(ScrollView(this).apply{addView(languages)},LinearLayout.LayoutParams(dp(108),-1))
         body.addView(ScrollView(this).apply{addView(files)},LinearLayout.LayoutParams(0,-1,1f))
         outer.addView(body,LinearLayout.LayoutParams(-1,0,1f))
         fun language(e:Triple<String,Tracks.Group,Int>):String {
@@ -155,13 +155,13 @@ class PlayerActivity : AppCompatActivity() {
                 files.addView(TextView(this).apply{text=(if(active)"✓  " else "")+label;setTextColor(if(active)accent else white);textSize=14f;maxLines=2;ellipsize=android.text.TextUtils.TruncateAt.END;setPadding(dp(10),dp(15),dp(10),dp(15));setOnClickListener{p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT,false).setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup,i)).build();dialog.dismiss()}},LinearLayout.LayoutParams(-1,-2))
             }
         }
-        languages.addView(button(tr("Off","إيقاف")){p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT,true).build();dialog.dismiss()},LinearLayout.LayoutParams(-1,dp(44)))
-        groups.keys.forEach{code->val chip=button(display(code)){select(code)};languages.addView(chip,LinearLayout.LayoutParams(-1,dp(44)).apply{bottomMargin=dp(6)});chips.add(code to chip)}
+        languages.addView(button(tr("Off","إيقاف")){p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT,true).build();dialog.dismiss()},LinearLayout.LayoutParams(-1,dp(36)))
+        groups.keys.forEach{code->val chip=button(display(code)){select(code)};languages.addView(chip,LinearLayout.LayoutParams(-1,dp(36)).apply{bottomMargin=dp(4)});chips.add(code to chip)}
         outer.addView(button(tr("Choose subtitle file","اختيار ملف ترجمة")){dialog.dismiss();subPicker.launch(arrayOf("*/*"))},LinearLayout.LayoutParams(-1,dp(44)))
         dialog.setContentView(outer);dialog.window?.setBackgroundDrawableResource(android.R.color.transparent);dialog.show()
         val landscape=resources.configuration.orientation==2
         dialog.window?.setGravity(if(landscape)Gravity.END or Gravity.CENTER_VERTICAL else Gravity.CENTER)
-        dialog.window?.setLayout(minOf(dp(560),resources.displayMetrics.widthPixels-dp(24)),minOf(dp(280),resources.displayMetrics.heightPixels-dp(96)))
+        dialog.window?.setLayout(minOf(dp(440),resources.displayMetrics.widthPixels-dp(40)),minOf(dp(280),resources.displayMetrics.heightPixels-dp(48)))
         select(if(groups.containsKey("ar"))"ar" else groups.keys.first())
     }
     private fun audio() {
@@ -212,9 +212,10 @@ class PlayerActivity : AppCompatActivity() {
         p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setPreferredTextLanguage("ar").build()
         pv.player=p;player=p;p.setMediaItem(item.build(),position);p.setPlaybackSpeed(speed);p.prepare();p.playWhenReady=true
     }
+    private fun positionSubtitles(controls:Boolean){pv.subtitleView?.apply{setPadding(0,0,0,if(controls)dp(130) else dp(16));setBottomPaddingFraction(.04f)}}
     override fun onConfigurationChanged(config:android.content.res.Configuration){
         super.onConfigurationChanged(config)
-        pv.subtitleView?.setBottomPaddingFraction(if(pv.isControllerFullyVisible){if(config.orientation==2).34f else .24f}else .08f)
+        positionSubtitles(pv.isControllerFullyVisible)
     }
     override fun onSaveInstanceState(out:Bundle){out.putInt("source",sourceIndex);out.putLong("position",player?.currentPosition?:0);super.onSaveInstanceState(out)}
     override fun onStop(){super.onStop();player?.pause()}

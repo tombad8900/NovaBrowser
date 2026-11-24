@@ -371,10 +371,11 @@ class MainActivity : AppCompatActivity() {
     private fun shown(u: String) = if (u.startsWith("data:") || u.startsWith("about:") || u.contains("nova.home")) "" else u
 
     private fun switchTo(t: Tab) {
-        cur?.session?.setActive(false)
+        cur?.session?.let{it.setActive(false);Engine.get(this).webExtensionController.setTabActive(it,false)}
         geckoView.releaseSession()
         geckoView.setSession(t.session)
         t.session.setActive(true)
+        Engine.get(this).webExtensionController.setTabActive(t.session,true)
         cur = t
         urlBar.setText(shown(t.url))
         refreshCounts()

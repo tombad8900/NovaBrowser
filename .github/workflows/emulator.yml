@@ -40,8 +40,10 @@ jobs:
             adb shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml shots/ui.xml
             ffmpeg -loglevel error -f lavfi -i testsrc=duration=120:size=320x240:rate=15 -f lavfi -i sine=duration=120 -pix_fmt yuv420p -c:v libx264 -c:a aac testpage/clip.mp4
             mkdir -p testpage/hls
-            ffmpeg -loglevel error -i testpage/clip.mp4 -t 120 -c copy -hls_time 4 -hls_playlist_type vod testpage/hls/master.m3u8
-            printf 'WEBVTT\n\n00:00:00.000 --> 00:02:00.000\nNOVA SUBTITLE OK\n' > testpage/ar.vtt
+            ffmpeg -loglevel error -i testpage/clip.mp4 -t 120 -c copy -hls_time 4 -hls_playlist_type vod testpage/hls/high.m3u8
+            ffmpeg -loglevel error -i testpage/clip.mp4 -t 120 -vf scale=192:144 -c:v libx264 -c:a aac -hls_time 4 -hls_playlist_type vod testpage/hls/low.m3u8
+            printf '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=320x240\nhigh.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=150000,RESOLUTION=192x144\nlow.m3u8\n' > testpage/hls/master.m3u8
+            printf 'WEBVTT\n\n00:00:00.000 --> 00:02:00.000\nاختبار الترجمة العربية في نوفا\n' > testpage/ar.vtt
             (python3 testpage/server.py > /tmp/test-server.log 2>&1 &)
             sleep 2
             adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/popup.html app.nova.browser
@@ -74,6 +76,7 @@ jobs:
             adb shell input tap $(python3 testpage/tap-label.py shots/shield.xml 'uBlock Origin')
             sleep 3
             adb exec-out screencap -p > shots/13-ublock-controls.png
+            adb shell uiautomator dump /sdcard/ublock.xml && adb pull /sdcard/ublock.xml shots/ublock.xml
             adb shell dumpsys meminfo app.nova.browser > shots/memory.txt
             adb shell dumpsys gfxinfo app.nova.browser > shots/frames.txt
             adb logcat -d -s AndroidRuntime:E NovaEngine:I NovaPerf:I ExoPlayerImplInternal:E > shots/crashes.txt
