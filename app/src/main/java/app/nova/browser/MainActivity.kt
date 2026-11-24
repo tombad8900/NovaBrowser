@@ -35,6 +35,7 @@ class MainActivity : AppCompatActivity() {
     class Tab(val session: GeckoSession) {
         val found = LinkedHashMap<String, Found>()
         val rejected=linkedSetOf<String>()
+        val fragments=linkedSetOf<String>()
         val subtitleHints=LinkedHashMap<String,Pair<String,String>>()
         val resources = LinkedHashMap<String, PlaybackSource>()
         val contexts = LinkedHashMap<String, RequestContext>()
@@ -240,6 +241,7 @@ class MainActivity : AppCompatActivity() {
                             if(kind=="REJECTED") {tab.rejected.add(sourceKey(u));tab.found.remove(sourceKey(u));tab.resources.remove(sourceKey(u));if(cur===tab)refreshCounts();return@post}
                             if (tab.contexts.size >= 300) tab.contexts.remove(tab.contexts.keys.first())
                             tab.contexts[sourceKey(u)] = context
+                            if (resource.optBoolean("segment")) {val key=sourceKey(u);tab.fragments.add(key);tab.found.remove(key);tab.resources.remove(key);if(cur===tab)refreshCounts();return@post}
                             if (kind == "CONTEXT") return@post
                             val arabic = Regex("(?i)([/_.?&=-])(ar|ara|arabic)([/_.?&=-]|$)").containsMatchIn(u)
                             val hint=tab.subtitleHints[sourceKey(u)]
@@ -290,7 +292,7 @@ class MainActivity : AppCompatActivity() {
             override fun onPageStart(session: GeckoSession, u: String) {
                 tab.loadStarted = android.os.SystemClock.elapsedRealtime()
                 tab.generation++
-                tab.found.clear(); tab.resources.clear(); tab.contexts.clear();tab.rejected.clear();tab.subtitleHints.clear(); tab.url = u
+                tab.found.clear(); tab.resources.clear(); tab.contexts.clear();tab.rejected.clear();tab.fragments.clear();tab.subtitleHints.clear(); tab.url = u
                 if (cur === tab) { refreshCounts(); if (!urlBar.hasFocus()) urlBar.setText(shown(u)) }
             }
             override fun onPageStop(session: GeckoSession, success: Boolean) {
@@ -397,7 +399,7 @@ class MainActivity : AppCompatActivity() {
     private fun recoverTab(tab:Tab){
         if(isFinishing||isDestroyed||tab !in tabs||tab.recovering)return
         tab.recovering=true
-        tab.found.clear();tab.resources.clear();tab.contexts.clear();tab.rejected.clear();tab.generation++
+        tab.found.clear();tab.resources.clear();tab.contexts.clear();tab.rejected.clear();tab.fragments.clear();tab.generation++
         try{
             if(!tab.session.isOpen)tab.session.open(Engine.get(this))
             tab.savedState?.let{tab.session.restoreState(it)}?:tab.url.takeIf{it.startsWith("http")}?.let{tab.session.loadUri(it)}
@@ -423,7 +425,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun addFound(t: Tab, f: Found) {
         val key=sourceKey(f.url)
-        if(key in t.rejected || t.found.containsKey(key)) return
+        if(key in t.rejected || key in t.fragments || t.found.containsKey(key)) return
         if (t.found.size > 300) return
         t.found[key] = f
         if (cur === t) refreshCounts()

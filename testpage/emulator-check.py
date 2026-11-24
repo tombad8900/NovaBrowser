@@ -16,6 +16,7 @@ def expect(text):
 tap('Play in Nova');time.sleep(3);adb('shell','input','tap','36','608');time.sleep(.5);shot('4-player')
 tap('Sources');expect('Playback sources');
 if any('fake' in n.attrib.get('text','').lower() for n in dump().iter()):raise RuntimeError('Rejected HTML shown as source')
+if any('AUDIO' in n.attrib.get('text','') for n in dump().iter()):raise RuntimeError('Known playlist fragment exposed as playable source')
 shot('5-sources')
 tap('VIDEO · 10.0.2.2');time.sleep(3);adb('shell','input','tap','36','608');shot('5a-mp4')
 tap('Sources');tap('HLS · 10.0.2.2');time.sleep(3);adb('shell','input','tap','36','608');shot('5b-hls')
