@@ -209,6 +209,10 @@ class PlayerActivity : AppCompatActivity() {
         p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setPreferredTextLanguage("ar").build()
         pv.player=p;player=p;p.setMediaItem(item.build(),position);p.setPlaybackSpeed(speed);p.prepare();p.playWhenReady=true
     }
+    override fun onConfigurationChanged(config:android.content.res.Configuration){
+        super.onConfigurationChanged(config)
+        pv.subtitleView?.setBottomPaddingFraction(if(pv.isControllerFullyVisible){if(config.orientation==2).34f else .24f}else .08f)
+    }
     override fun onSaveInstanceState(out:Bundle){out.putInt("source",sourceIndex);out.putLong("position",player?.currentPosition?:0);super.onSaveInstanceState(out)}
     override fun onStop(){super.onStop();player?.pause()}
     override fun onDestroy(){player?.release();streamer?.stop();super.onDestroy()}
