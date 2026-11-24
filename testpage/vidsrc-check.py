@@ -9,8 +9,8 @@ def snap(label):
  adb('shell','uiautomator','dump','/sdcard/vidsrc.xml');raw=adb('shell','cat','/sdcard/vidsrc.xml');open('shots/'+label+'.xml','wb').write(raw);open('shots/'+label+'.png','wb').write(adb('exec-out','screencap','-p'));return E.fromstring(raw)
 def click(node):
  b=list(map(int,re.findall(r'\d+',node.attrib['bounds'])));adb('shell','input','tap',str((b[0]+b[2])//2),str((b[1]+b[3])//2))
-adb('shell','am','force-stop','app.nova.browser.trial');adb('logcat','-c')
-adb('shell','am','start','-a','android.intent.action.VIEW','-d','https://vidsrc.sh/embed/movie?tmdb='+movie,'app.nova.browser.trial');time.sleep(20)
+adb('shell','am','force-stop','app.nova.browser.preview');adb('logcat','-c')
+adb('shell','am','start','-a','android.intent.action.VIEW','-d','https://vidsrc.sh/embed/movie?tmdb='+movie,'app.nova.browser.preview');time.sleep(20)
 root=snap('24-vidsrc-page')
 played=False
 for n in root.iter():

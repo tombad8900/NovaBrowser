@@ -9,9 +9,9 @@ def tap(label):
   if n.attrib.get('text')==label or n.attrib.get('content-desc')==label:
    b=list(map(int,re.findall(r'\d+',n.attrib['bounds'])));adb('shell','input','tap',str((b[0]+b[2])//2),str((b[1]+b[3])//2));return
  raise RuntimeError('Missing external test control '+label)
-adb('shell','am','force-stop','app.nova.browser.trial')
+adb('shell','am','force-stop','app.nova.browser.preview')
 adb('logcat','-c')
-adb('shell','am','start','-a','android.intent.action.VIEW','-d','https://bitmovin.com/demos/multi-audio-tracks/','app.nova.browser.trial')
+adb('shell','am','start','-a','android.intent.action.VIEW','-d','https://bitmovin.com/demos/multi-audio-tracks/','app.nova.browser.preview')
 time.sleep(22)
 open('shots/18-external-page.png','wb').write(adb('exec-out','screencap','-p'))
 xml=E.tostring(dump(),encoding='unicode');open('shots/external-page.xml','w').write(xml)

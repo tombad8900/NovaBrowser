@@ -92,12 +92,12 @@ jobs:
           target: google_apis
           script: |
             adb install -r app/build/outputs/apk/x64/debug/app-x64-debug.apk
-            adb shell am start -n app.nova.browser.trial/app.nova.browser.MainActivity
+            adb shell am start -n app.nova.browser.preview/app.nova.browser.MainActivity
             sleep 20
             mkdir -p shots
             adb exec-out screencap -p > shots/1-home.png
-            adb shell dumpsys gfxinfo app.nova.browser.trial reset
-            adb shell am start -a android.intent.action.VIEW -d https://example.com app.nova.browser.trial
+            adb shell dumpsys gfxinfo app.nova.browser.preview reset
+            adb shell am start -a android.intent.action.VIEW -d https://example.com app.nova.browser.preview
             sleep 12
             adb exec-out screencap -p > shots/2-example.png
             adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton || true
@@ -116,26 +116,26 @@ jobs:
             (python3 testpage/server.py > /tmp/test-server.log 2>&1 &)
             sleep 2
             if [ "$NOVA_TRANSPORT_ONLY" = "true" ]; then python3 testpage/source-lifetime-check.py && python3 testpage/transport-check.py; exit $?; fi
-            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/popup.html app.nova.browser.trial
+            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/popup.html app.nova.browser.preview
             sleep 5
             adb exec-out screencap -p > shots/9-popup-before.png
             adb shell uiautomator dump /sdcard/popup.xml && adb pull /sdcard/popup.xml shots/popup.xml
             adb shell input tap $(python3 testpage/tap-label.py shots/popup.xml 'Open safe tab')
             sleep 5
             adb exec-out screencap -p > shots/10-popup-after.png
-            adb shell pidof app.nova.browser.trial
-            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/test.html app.nova.browser.trial
+            adb shell pidof app.nova.browser.preview
+            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/test.html app.nova.browser.preview
             sleep 15
             adb exec-out screencap -p > shots/3-detector-page.png
             adb shell uiautomator dump /sdcard/ui2.xml && adb pull /sdcard/ui2.xml shots/ui2.xml
             python3 testpage/emulator-check.py || { adb logcat -d -s AndroidRuntime:E NovaEngine:I NovaPerf:I ExoPlayerImplInternal:E > shots/crashes.txt; exit 1; }
-            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/plain.html app.nova.browser.trial
+            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/plain.html app.nova.browser.preview
             sleep 8
             adb exec-out screencap -p > shots/6-plain.png
-            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/protection.html app.nova.browser.trial
+            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/protection.html app.nova.browser.preview
             sleep 8
             adb exec-out screencap -p > shots/10b-filter-fixture.png
-            adb shell am start -a android.intent.action.VIEW -d https://egybest.website/ app.nova.browser.trial
+            adb shell am start -a android.intent.action.VIEW -d https://egybest.website/ app.nova.browser.preview
             sleep 15
             adb exec-out screencap -p > shots/11-reported-site.png
             adb shell uiautomator dump /sdcard/site.xml && adb pull /sdcard/site.xml shots/site.xml
@@ -149,7 +149,7 @@ jobs:
             adb shell uiautomator dump /sdcard/ublock.xml && adb pull /sdcard/ublock.xml shots/ublock.xml
             adb shell input keyevent KEYCODE_BACK
             adb shell input keyevent KEYCODE_BACK
-            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/frame.html app.nova.browser.trial
+            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/frame.html app.nova.browser.preview
             sleep 14
             adb exec-out screencap -p > shots/14-frame-detector.png
             adb shell uiautomator dump /sdcard/frame.xml && adb pull /sdcard/frame.xml shots/frame.xml
@@ -157,9 +157,9 @@ jobs:
             adb shell input keyevent KEYCODE_BACK
             python3 testpage/torrent-consent-check.py || touch shots/regression-failed
             python3 testpage/recovery-check.py || touch shots/regression-failed
-            adb shell dumpsys meminfo app.nova.browser.trial > shots/memory.txt
-            adb shell dumpsys meminfo --package app.nova.browser.trial > shots/all-process-memory.txt
-            adb shell dumpsys gfxinfo app.nova.browser.trial > shots/frames.txt
+            adb shell dumpsys meminfo app.nova.browser.preview > shots/memory.txt
+            adb shell dumpsys meminfo --package app.nova.browser.preview > shots/all-process-memory.txt
+            adb shell dumpsys gfxinfo app.nova.browser.preview > shots/frames.txt
             python3 testpage/external-check.py || touch shots/regression-failed
             python3 testpage/vidsrc-check.py
             if [ "$NOVA_PIP_PROBE" = "true" ]; then python3 testpage/pip-check.py || touch shots/regression-failed; fi

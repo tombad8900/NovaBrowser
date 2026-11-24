@@ -1,5 +1,5 @@
 <resources>
- <string name="app_name">Nova Trial</string>
+ <string name="app_name">Nova Trial 0.4</string>
  <string name="transport_back">Back 10 seconds</string>
  <string name="transport_forward">Forward 10 seconds</string>
  <string name="transport_play_pause">Play or pause</string>

@@ -1,6 +1,6 @@
 """Tap actual control bounds; verify independent player-state telemetry, plus pixels."""
 import subprocess,time,re,xml.etree.ElementTree as E,json
-pkg='app.nova.browser.trial'
+pkg='app.nova.browser.preview'
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=30)
 def dump():
  adb('shell','rm','-f','/sdcard/transport.xml');adb('shell','uiautomator','dump','/sdcard/transport.xml')

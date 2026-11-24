@@ -1,6 +1,6 @@
 """Same local no-media page in one versus eight tabs. Not a device benchmark."""
 import subprocess,time,os,json,re
-pkg='app.nova.browser.trial'
+pkg='app.nova.browser.preview'
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=30)
 adb('shell','am','force-stop',pkg)
 adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/plain.html',pkg);time.sleep(10)

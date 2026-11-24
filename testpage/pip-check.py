@@ -8,7 +8,7 @@ def tap(label):
   if n.attrib.get('text')==label or n.attrib.get('content-desc')==label:
    b=list(map(int,re.findall(r'\d+',n.attrib['bounds'])));adb('shell','input','tap',str((b[0]+b[2])//2),str((b[1]+b[3])//2));return
  raise RuntimeError('Missing PiP control '+label)
-pkg='app.nova.browser.trial'
+pkg='app.nova.browser.preview'
 adb('shell','am','force-stop',pkg)
 adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/switch.html',pkg);time.sleep(8)
 tap('Play in Nova');time.sleep(3)

@@ -1,5 +1,5 @@
 <resources>
- <string name="app_name">نوفا التجريبي</string>
+ <string name="app_name">نوفا التجريبي 0.4</string>
  <string name="transport_back">رجوع 10 ثوانٍ</string>
  <string name="transport_forward">تقديم 10 ثوانٍ</string>
  <string name="transport_play_pause">تشغيل أو إيقاف مؤقت</string>

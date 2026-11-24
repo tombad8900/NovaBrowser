@@ -6,11 +6,11 @@ android {
     namespace = "app.nova.browser"
     compileSdk { version = release(37) { minorApiLevel = 0 } }
     defaultConfig {
-        applicationId = "app.nova.browser.trial"
+        applicationId = "app.nova.browser.preview"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
-        versionName = "0.3.0-core-trial"
+        versionCode = 4
+        versionName = "0.4.0-preview"
     }
     flavorDimensions += "abi"
     productFlavors {

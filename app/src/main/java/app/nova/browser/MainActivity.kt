@@ -585,7 +585,7 @@ class MainActivity : AppCompatActivity() {
             item(l,tr("Language", "اللغة"),tr("Choose app language", "اختيار لغة التطبيق"),{d.dismiss();chooseLanguage()})
             item(l,tr("Playback", "التشغيل"),tr("Subtitle appearance", "مظهر الترجمة"),{d.dismiss();playbackSettings()})
             title(l,tr("About Nova", "عن نوفا"))
-            item(l,tr("Nova · 0.3 development","نوفا · 0.3 قيد التطوير"),tr("In development. Not a finished browser.", "قيد التطوير. ليس متصفحاً مكتملاً بعد."),{})
+            item(l,tr("Nova · 0.4 preview","نوفا · 0.4 تجريبي"),tr("In development. Not a finished browser.", "قيد التطوير. ليس متصفحاً مكتملاً بعد."),{})
         }
     }
 

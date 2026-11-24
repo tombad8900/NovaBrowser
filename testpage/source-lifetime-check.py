@@ -1,6 +1,6 @@
 """Only current-document captures, including refresh and same-document URL changes."""
 import subprocess,time,xml.etree.ElementTree as E,re
-pkg='app.nova.browser.trial'
+pkg='app.nova.browser.preview'
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=30)
 def root():
  adb('shell','uiautomator','dump','/sdcard/lifetime.xml');return E.fromstring(adb('shell','cat','/sdcard/lifetime.xml'))
