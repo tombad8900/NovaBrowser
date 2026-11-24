@@ -180,6 +180,8 @@ class MainActivity : AppCompatActivity() {
             loadWithOverviewMode = true; useWideViewPort = true
             mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             allowFileAccess = false; allowContentAccess = false
+            @Suppress("DEPRECATION")
+            if (android.os.Build.VERSION.SDK_INT >= 29) forceDark = WebSettings.FORCE_DARK_OFF
         }
         CookieManager.getInstance().apply { setAcceptCookie(true); setAcceptThirdPartyCookies(web, true) }
         web.setDownloadListener { u, ua, cd, mime, _ ->

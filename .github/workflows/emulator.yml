@@ -36,6 +36,13 @@ jobs:
             sleep 12
             adb exec-out screencap -p > shots/2-example.png
             adb shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml shots/ui.xml
+            (cd testpage && python3 -m http.server 8000 >/dev/null 2>&1 &)
+            sleep 2
+            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/test.html app.nova.browser
+            sleep 15
+            adb exec-out screencap -p > shots/3-detector-page.png
+            adb shell uiautomator dump /sdcard/ui2.xml && adb pull /sdcard/ui2.xml shots/ui2.xml
+            grep -o 'text="◉[^"]*"' shots/ui2.xml || true
             adb logcat -d -s AndroidRuntime:E > shots/crashes.txt
       - uses: actions/upload-artifact@v4
         if: always()
