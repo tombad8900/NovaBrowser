@@ -3,6 +3,10 @@ name: Emulator smoke test
 on:
   workflow_dispatch:
     inputs:
+      build_run:
+        description: Optional successful Build run to reuse its exact x64 APK without dependency downloads.
+        required: false
+        default: ''
       pip_probe:
         description: Explicit optional PiP interaction probe. Not verified yet.
         required: false
@@ -15,6 +19,9 @@ on:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     env:
       NOVA_TMDB_PROBE: ${{ inputs.tmdb_probe }}
       NOVA_PIP_PROBE: ${{ inputs.pip_probe }}
@@ -32,7 +39,31 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
-      - run: gradle --no-daemon :app:assembleX64Debug
+      - if: inputs.build_run == ''
+        run: gradle --no-daemon :app:assembleX64Debug
+      - name: Reuse verified build APK
+        if: inputs.build_run != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN: ${{ inputs.build_run }}
+          REPO: ${{ github.repository }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os,json,urllib.request
+          run=os.environ['BUILD_RUN']
+          if not run.isdigit(): raise SystemExit('Invalid build run')
+          req=urllib.request.Request('https://api.github.com/repos/'+os.environ['REPO']+'/actions/runs/'+run,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+          data=json.load(urllib.request.urlopen(req))
+          if data.get('conclusion')!='success' or data.get('name')!='Build': raise SystemExit('Not a successful Build')
+          # Test-only workflow commits may follow the binary commit. Pin the exact artifact SHA in evidence.
+          open('build-evidence.json','w').write(json.dumps({'run':run,'apkCommit':data['head_sha'],'testCommit':os.environ['EXPECTED_SHA']}))
+          PY
+          gh run download "$BUILD_RUN" --repo "$REPO" --name Nova-apk --dir reused-apk
+          mkdir -p app/build/outputs/apk/x64/debug
+          cp reused-apk/*x86_64-emulator.apk app/build/outputs/apk/x64/debug/app-x64-debug.apk
+          mkdir -p shots
+          cp build-evidence.json shots/build-evidence.json
       - name: Run on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
