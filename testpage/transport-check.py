@@ -24,7 +24,11 @@ for locale in ['en','ar']:
  if locale=='ar':
   adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/plain.html',pkg);time.sleep(4)
   tap('Menu');tap('Settings');tap('Language');tap('العربية');time.sleep(3)
-  tap('القائمة');tap('الإعدادات');shot('25-arabic-settings');tap('التشغيل');shot('26-arabic-subtitle-settings');adb('shell','input','keyevent','KEYCODE_BACK')
+  tap('القائمة');tap('الإعدادات');tap('البحث');tap('Google');shot('25-arabic-settings');tap('التشغيل');tap('خلفية داكنة');shot('26-arabic-subtitle-settings');adb('shell','input','keyevent','KEYCODE_BACK')
+  adb('shell','am','force-stop',pkg);adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/plain.html',pkg);time.sleep(4)
+  tap('القائمة');tap('الإعدادات');assert any(n.attrib.get('text')=='Google' for n in dump().iter()),'Search choice did not persist'
+  tap('التشغيل');assert any(n.attrib.get('text')=='متوقفة' for n in dump().iter()),'Subtitle background did not persist'
+  shot('26b-persisted-arabic-subtitle-settings');tap('استعادة مظهر الترجمة الافتراضي');adb('shell','input','keyevent','KEYCODE_BACK')
  adb('shell','am','force-stop',pkg);adb('logcat','-c')
  adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/switch.html','--ez','testHoldControls','true',pkg);time.sleep(6)
  tap('تشغيل في نوفا' if locale=='ar' else 'Play in Nova');time.sleep(4)

@@ -69,7 +69,22 @@ jobs:
           cp reused-apk/*x86_64-emulator.apk app/build/outputs/apk/x64/debug/app-x64-debug.apk
           mkdir -p shots
           cp build-evidence.json shots/build-evidence.json
+      - name: Focused source, settings and transport tests
+        if: inputs.transport_only == 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          script: |
+            adb install -r app/build/outputs/apk/x64/debug/app-x64-debug.apk
+            ffmpeg -loglevel error -f lavfi -i testsrc=duration=120:size=320x240:rate=15 -f lavfi -i sine=duration=120 -pix_fmt yuv420p -c:v libx264 -c:a aac testpage/clip.mp4
+            (python3 testpage/server.py > /tmp/test-server.log 2>&1 &)
+            sleep 2
+            python3 testpage/source-lifetime-check.py
+            python3 testpage/transport-check.py
       - name: Run on emulator
+        if: inputs.transport_only != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
