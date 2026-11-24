@@ -12,14 +12,13 @@ class Handler(SimpleHTTPRequestHandler):
             self.wfile.write(b'<meta name=viewport content="width=device-width"><h2>Popup regression</h2><a target="_blank" href="/plain.html">Open safe tab</a><script>window.open("/plain.html");</script>');return
         if path=='/test.html':
             self.send_response(200);self.send_header('Content-Type','text/html');self.send_header('Set-Cookie','nova_test=ok; Path=/');self.end_headers()
-            self.wfile.write(b'''<!doctype html><meta name=viewport content="width=device-width,initial-scale=1"><body style="font:18px sans-serif;background:#fafafa;color:#111;padding:24px"><h2>Nova context test</h2><p>Protected video and Arabic subtitle.</p><video width=260 controls><source src="/protected/clip.mp4" type="video/mp4"><track src="/protected/ar.vtt" kind=subtitles srclang=ar label="Arabic"></video><script>fetch('/protected/ar.vtt');fetch('/fake.m3u8');</script>''');return
+            self.wfile.write(b'''<!doctype html><meta name=viewport content="width=device-width,initial-scale=1"><body style="font:18px sans-serif;background:#fafafa;color:#111;padding:24px"><h2>Nova context test</h2><p>Protected video and Arabic subtitle.</p><video width=260 controls><source src="/protected/clip.mp4" type="video/mp4"><track src="/protected/ar.vtt" kind=subtitles srclang=ar label="Arabic"></video><script>fetch('/protected/ar.vtt');fetch('/protected/hls/master.m3u8');fetch('/fake.m3u8');</script>''');return
         if path.startswith('/protected/'):
             cookie='nova_test=ok' in self.headers.get('Cookie','')
             referer=self.headers.get('Referer','')
             if not cookie or not referer.startswith('http://10.0.2.2:8000/'):
                 self.send_response(403);self.end_headers();return
-            if path.endswith('clip.mp4'):self.path='/clip.mp4'
-            elif path.endswith('ar.vtt'):self.path='/ar.vtt'
+            self.path=path.removeprefix('/protected')
         if path=='/fake.m3u8':
             self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers();self.wfile.write(b'<html>Not a stream</html>');return
         return super().do_GET()

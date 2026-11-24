@@ -38,6 +38,8 @@ jobs:
             adb exec-out screencap -p > shots/2-example.png
             adb shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml shots/ui.xml
             ffmpeg -loglevel error -f lavfi -i testsrc=duration=120:size=320x240:rate=15 -f lavfi -i sine=duration=120 -pix_fmt yuv420p -c:v libx264 -c:a aac testpage/clip.mp4
+            mkdir -p testpage/hls
+            ffmpeg -loglevel error -i testpage/clip.mp4 -t 120 -c copy -hls_time 4 -hls_playlist_type vod testpage/hls/master.m3u8
             printf 'WEBVTT\n\n00:00:00.000 --> 00:02:00.000\nNOVA SUBTITLE OK\n' > testpage/ar.vtt
             (python3 testpage/server.py > /tmp/test-server.log 2>&1 &)
             sleep 2
