@@ -24,6 +24,21 @@ object Sniffer {
         }
     }
 
+    /** Classify by response Content-Type when the URL itself has no telling extension. */
+    fun classifyMime(url: String, ct: String): String? {
+        classify(url)?.let { return it }
+        if (!url.startsWith("http", ignoreCase = true)) return null
+        val c = ct.substringBefore(';').trim().lowercase()
+        return when {
+            c == "application/vnd.apple.mpegurl" || c == "application/x-mpegurl" -> "HLS"
+            c == "application/dash+xml" -> "DASH"
+            c == "text/vtt" || c == "application/x-subrip" -> "SUB"
+            c.startsWith("video/") -> "VIDEO"
+            c.startsWith("audio/") -> "AUDIO"
+            else -> null
+        }
+    }
+
     fun mimeForSub(url: String): String {
         val ext = url.substringBefore('#').substringBefore('?').lowercase().substringAfterLast('.', "")
         return when (ext) {

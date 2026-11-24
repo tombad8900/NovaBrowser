@@ -19,7 +19,9 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
-import android.webkit.*
+import android.webkit.URLUtil
+import org.json.JSONObject
+import org.mozilla.geckoview.*
 import android.widget.*
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
@@ -30,11 +32,13 @@ import java.net.URLEncoder
 
 class MainActivity : AppCompatActivity() {
 
-    class Tab(val web: WebView) {
+    class Tab(val session: GeckoSession) {
         val found = LinkedHashMap<String, Found>()
         var title = ""
         var url = ""
         var desktop = false
+        var canBack = false
+        var canFwd = false
     }
 
     private val bg = Color.parseColor("#0F1115")
@@ -53,10 +57,8 @@ class MainActivity : AppCompatActivity() {
     private var cur: Tab? = null
     private lateinit var store: Store
     private val ui = Handler(Looper.getMainLooper())
-    private var customView: View? = null
-    private var customCb: WebChromeClient.CustomViewCallback? = null
-    private val mobileUa: String by lazy { WebView(this).settings.userAgentString }
-    private val desktopUa = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    private lateinit var geckoView: GeckoView
+    private var inFullscreen = false
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
@@ -67,6 +69,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         store = Store(this)
+        Engine.get(this)
+        Engine.whenReady { ext -> tabs.forEach { attachExt(it, ext) } }
         buildUi()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() { goBack() }
@@ -86,9 +90,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun goBack() {
-        if (customView != null) { hideCustom(); return }
+        if (inFullscreen) { cur?.session?.exitFullScreen(); return }
         val t = cur ?: return finish()
-        if (t.web.canGoBack()) t.web.goBack()
+        if (t.canBack) t.session.goBack()
         else if (tabs.size > 1) closeTab(t)
         else finish()
     }
@@ -107,7 +111,9 @@ class MainActivity : AppCompatActivity() {
             max = 100; progressTintList = android.content.res.ColorStateList.valueOf(accent)
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(3)); visibility = View.INVISIBLE
         }
-        holder = FrameLayout(this).apply { layoutParams = LinearLayout.LayoutParams(-1, 0, 1f) }
+        holder = FrameLayout(this).apply { layoutParams = LinearLayout.LayoutParams(-1, 0, 1f); setBackgroundColor(Color.WHITE) }
+        geckoView = GeckoView(this)
+        holder.addView(geckoView, FrameLayout.LayoutParams(-1, -1))
 
         urlBar = EditText(this).apply {
             hint = "Search or enter address"; setHintTextColor(dim); setTextColor(textColor); textSize = 15f
@@ -129,9 +135,9 @@ class MainActivity : AppCompatActivity() {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         snifBtn = btn("◉ 0") { showSniffer() }
         tabBtn = btn("1") { showTabs() }
-        row.addView(btn("‹") { cur?.web?.let { if (it.canGoBack()) it.goBack() } })
-        row.addView(btn("›") { cur?.web?.let { if (it.canGoForward()) it.goForward() } })
-        row.addView(btn("⟳") { cur?.web?.reload() })
+        row.addView(btn("‹") { cur?.let { if (it.canBack) it.session.goBack() } })
+        row.addView(btn("›") { cur?.let { if (it.canFwd) it.session.goForward() } })
+        row.addView(btn("⟳") { cur?.session?.reload() })
         row.addView(snifBtn)
         row.addView(tabBtn)
         row.addView(btn("⋮") { showMenu() })
@@ -163,113 +169,107 @@ class MainActivity : AppCompatActivity() {
 
     private fun load(u: String) {
         val t = cur ?: return
-        t.web.loadUrl(u)
+        t.session.load(GeckoSession.Loader().uri(u))
     }
 
     // ---------- tabs ----------
-    @SuppressLint("SetJavaScriptEnabled", "AddJavascriptInterface")
-    private fun newTab(url: String?, switchTo: Boolean = true): Tab {
-        val web = WebView(this)
-        val tab = Tab(web)
-        web.setBackgroundColor(Color.WHITE) // pages without their own background must render like a normal browser
-        if (android.os.Build.VERSION.SDK_INT >= 29) web.isForceDarkAllowed = false
-        if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.FORCE_DARK))
-            androidx.webkit.WebSettingsCompat.setForceDark(web.settings, androidx.webkit.WebSettingsCompat.FORCE_DARK_OFF)
-        if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.ALGORITHMIC_DARKENING))
-            androidx.webkit.WebSettingsCompat.setAlgorithmicDarkeningAllowed(web.settings, false)
-        web.settings.apply {
-            javaScriptEnabled = true; domStorageEnabled = true; databaseEnabled = true
-            mediaPlaybackRequiresUserGesture = false
-            setSupportMultipleWindows(true); javaScriptCanOpenWindowsAutomatically = false
-            builtInZoomControls = true; displayZoomControls = false
-            loadWithOverviewMode = true; useWideViewPort = true
-            mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-            allowFileAccess = false; allowContentAccess = false
-            @Suppress("DEPRECATION")
-            if (android.os.Build.VERSION.SDK_INT >= 29) forceDark = WebSettings.FORCE_DARK_OFF
-        }
-        CookieManager.getInstance().apply { setAcceptCookie(true); setAcceptThirdPartyCookies(web, true) }
-        web.setDownloadListener { u, ua, cd, mime, _ ->
-            val req = DownloadManager.Request(Uri.parse(u))
-            val name = URLUtil.guessFileName(u, cd, mime)
-            req.setMimeType(mime)
-            req.addRequestHeader("Cookie", CookieManager.getInstance().getCookie(u) ?: "")
-            req.addRequestHeader("User-Agent", ua)
-            req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
-            (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).enqueue(req)
-            Toast.makeText(this, "Downloading $name", Toast.LENGTH_SHORT).show()
-        }
-        web.webViewClient = object : WebViewClient() {
-            override fun shouldInterceptRequest(view: WebView, r: WebResourceRequest): WebResourceResponse? {
-                val u = r.url.toString()
-                if (store.adblock && Sniffer.isBlocked(r.url.host))
-                    return WebResourceResponse("text/plain", "utf-8", java.io.ByteArrayInputStream(ByteArray(0)))
-                Sniffer.classify(u)?.let { k -> ui.post { addFound(tab, Found(u, k, "network")) } }
+    private fun attachExt(tab: Tab, ext: WebExtension) {
+        tab.session.webExtensionController.setMessageDelegate(ext, object : WebExtension.MessageDelegate {
+            override fun onMessage(nativeApp: String, message: Any, sender: WebExtension.MessageSender): GeckoResult<Any>? {
+                if (nativeApp != "nova" || sender.webExtension.id != Engine.EXT_ID || message !is JSONObject) return null
+                when (message.optString("t")) {
+                    "net" -> {
+                        val u = message.optString("url")
+                        Sniffer.classifyMime(u, message.optString("ct"))?.let { k -> ui.post { addFound(tab, Found(u, k, "network")) } }
+                    }
+                    "scan" -> {
+                        val arr = message.optJSONArray("urls")
+                        if (arr != null) {
+                            val f = Sniffer.foundFromUrls((0 until arr.length()).map { arr.getString(it) }, "page")
+                            ui.post { f.forEach { addFound(tab, it) } }
+                        }
+                    }
+                }
                 return null
             }
+        }, "nova")
+    }
 
-            override fun shouldOverrideUrlLoading(view: WebView, r: WebResourceRequest): Boolean {
-                val u = r.url.toString()
-                if (u.startsWith("magnet:")) { openPlayer(u, emptyList(), ""); return true }
-                if (u.startsWith("http://") || u.startsWith("https://") || u == "about:blank") return false
-                // only hand a few safe schemes to other apps, and only after a real tap
-                val sch = r.url.scheme ?: ""
-                if (r.hasGesture() && sch in setOf("mailto", "tel", "sms")) {
-                    try { startActivity(Intent(Intent.ACTION_VIEW, r.url)) } catch (_: Exception) {}
-                }
-                return true
-            }
-
-            override fun onPageStarted(view: WebView, u: String, favicon: Bitmap?) {
+    private fun newTab(url: String?, switchTo: Boolean = true, session: GeckoSession? = null): Tab {
+        val s = session ?: GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).build())
+        val tab = Tab(s)
+        s.progressDelegate = object : GeckoSession.ProgressDelegate {
+            override fun onPageStart(session: GeckoSession, u: String) {
                 tab.found.clear(); tab.url = u
                 if (cur === tab) { refreshCounts(); if (!urlBar.hasFocus()) urlBar.setText(shown(u)) }
             }
-
-            override fun onPageFinished(view: WebView, u: String) {
-                tab.url = u
-                if (u.startsWith("http")) store.addHistory(view.title ?: "", u)
-                scan(tab)
-                ui.postDelayed({ scan(tab) }, 3000); ui.postDelayed({ scan(tab) }, 8000)
+            override fun onPageStop(session: GeckoSession, success: Boolean) {
+                if (tab.url.startsWith("http")) store.addHistory(tab.title, tab.url)
             }
-        }
-        web.webChromeClient = object : WebChromeClient() {
-            override fun onProgressChanged(view: WebView, p: Int) {
+            override fun onProgressChange(session: GeckoSession, p: Int) {
                 if (cur === tab) { progress.visibility = if (p in 1..99) View.VISIBLE else View.INVISIBLE; progress.progress = p }
             }
-            override fun onReceivedTitle(view: WebView, t: String?) { tab.title = t ?: "" }
-            override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, msg: android.os.Message): Boolean {
-                if (!isUserGesture) return false // popup blocker
-                val nt = newTab(null)
-                (msg.obj as WebView.WebViewTransport).webView = nt.web
-                msg.sendToTarget(); return true
-            }
-            override fun onShowCustomView(v: View, cb: CustomViewCallback) {
-                customView = v; customCb = cb
-                fullscreenHost.addView(v); fullscreenHost.visibility = View.VISIBLE
-                window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-            }
-            override fun onHideCustomView() { hideCustom() }
         }
+        s.navigationDelegate = object : GeckoSession.NavigationDelegate {
+            override fun onLocationChange(session: GeckoSession, u: String?, perms: MutableList<GeckoSession.PermissionDelegate.ContentPermission>, hasUserGesture: Boolean) {
+                tab.url = u ?: ""
+                if (cur === tab && !urlBar.hasFocus()) urlBar.setText(shown(tab.url))
+            }
+            override fun onCanGoBack(session: GeckoSession, v: Boolean) { tab.canBack = v }
+            override fun onCanGoForward(session: GeckoSession, v: Boolean) { tab.canFwd = v }
+            override fun onLoadRequest(session: GeckoSession, r: GeckoSession.NavigationDelegate.LoadRequest): GeckoResult<AllowOrDeny>? {
+                val u = r.uri
+                if (u.startsWith("magnet:")) { ui.post { openPlayer(u, emptyList(), "") }; return GeckoResult.deny() }
+                if (u.startsWith("http://") || u.startsWith("https://") || u.startsWith("about:") || u.startsWith("data:") || u.startsWith("blob:")) return GeckoResult.allow()
+                // only hand a few safe schemes to other apps, and only after a real tap
+                val sch = Uri.parse(u).scheme ?: ""
+                if (r.hasUserGesture && sch in setOf("mailto", "tel", "sms")) {
+                    ui.post { try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u))) } catch (_: Exception) {} }
+                }
+                return GeckoResult.deny()
+            }
+            override fun onNewSession(session: GeckoSession, uri: String): GeckoResult<GeckoSession>? {
+                val ns = GeckoSession(GeckoSessionSettings.Builder().usePrivateMode(false).build())
+                ui.post { newTab(null, true, ns) }
+                return GeckoResult.fromValue(ns)
+            }
+        }
+        s.contentDelegate = object : GeckoSession.ContentDelegate {
+            override fun onTitleChange(session: GeckoSession, t: String?) { tab.title = t ?: "" }
+            override fun onFullScreen(session: GeckoSession, full: Boolean) {
+                inFullscreen = full
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility = if (full) View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY else View.SYSTEM_UI_FLAG_VISIBLE
+            }
+            override fun onCloseRequest(session: GeckoSession) { ui.post { closeTab(tab) } }
+            override fun onExternalResponse(session: GeckoSession, resp: WebResponse) {
+                val name = URLUtil.guessFileName(resp.uri, null, resp.headers["content-type"])
+                try {
+                    val req = DownloadManager.Request(Uri.parse(resp.uri))
+                    req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
+                    (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).enqueue(req)
+                    ui.post { Toast.makeText(this@MainActivity, "Downloading $name", Toast.LENGTH_SHORT).show() }
+                } catch (_: Exception) {}
+            }
+        }
+        s.promptDelegate = Prompts(this)
+        if (!s.isOpen) s.open(Engine.get(this))
         tabs.add(tab)
+        Engine.ext?.let { attachExt(tab, it) }
         if (switchTo) switchTo(tab)
-        if (url != null) web.loadUrl(url) else web.loadDataWithBaseURL("https://nova.home/", homeHtml(), "text/html", "utf-8", null)
+        if (session == null) {
+            if (url != null) s.load(GeckoSession.Loader().uri(url))
+            else s.load(GeckoSession.Loader().data(homeHtml(), "text/html"))
+        }
         return tab
     }
 
-    private fun hideCustom() {
-        customView?.let { fullscreenHost.removeView(it) }
-        fullscreenHost.visibility = View.GONE
-        customCb?.onCustomViewHidden(); customView = null; customCb = null
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
-    }
-
-    private fun shown(u: String) = if (u.startsWith("data:") || u.contains("nova.home")) "" else u
+    private fun shown(u: String) = if (u.startsWith("data:") || u.startsWith("about:") || u.contains("nova.home")) "" else u
 
     private fun switchTo(t: Tab) {
-        holder.removeAllViews()
-        (t.web.parent as? ViewGroup)?.removeView(t.web)
-        holder.addView(t.web, FrameLayout.LayoutParams(-1, -1))
+        geckoView.releaseSession()
+        geckoView.setSession(t.session)
         cur = t
         urlBar.setText(shown(t.url))
         refreshCounts()
@@ -277,8 +277,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun closeTab(t: Tab) {
         val i = tabs.indexOf(t)
-        tabs.remove(t); t.web.destroy()
-        if (tabs.isEmpty()) newTab(null) else switchTo(tabs[maxOf(0, i - 1)])
+        tabs.remove(t)
+        if (cur === t) geckoView.releaseSession()
+        t.session.close()
+        if (tabs.isEmpty()) newTab(null) else if (cur === t) switchTo(tabs[maxOf(0, i - 1)])
     }
 
     private fun refreshCounts() {
@@ -294,27 +296,6 @@ class MainActivity : AppCompatActivity() {
         if (t.found.size > 300) return
         t.found[f.url] = f
         if (cur === t) refreshCounts()
-    }
-
-    private val scanJs = """
-        (function(){try{var out=[];function add(u){if(u&&typeof u==='string')out.push(u)}
-        document.querySelectorAll('video,audio,source,track,a[href],iframe,embed').forEach(function(e){add(e.currentSrc||e.src||e.href)});
-        var h=document.documentElement.innerHTML.replace(/\\\//g,'/').replace(/&amp;/g,'&');
-        var re=/https?:\/\/[^\s"'<>\\)]+\.(?:m3u8|mpd|mp4|webm|mkv|vtt|srt|ass|ttml)(?:\?[^\s"'<>\\)]*)?/gi;var m;var n=0;
-        while((m=re.exec(h))&&n++<300){add(m[0])}
-        var mg=h.match(/magnet:\?xt=urn:btih:[^\s"'<>]+/gi)||[];mg.forEach(add);
-        return JSON.stringify(out.slice(0,300))}catch(e){return '[]'}})();
-    """.trimIndent()
-
-    private fun scan(t: Tab) {
-        t.web.evaluateJavascript(scanJs) { res ->
-            try {
-                val inner = JSONArray("[" + res + "]").optString(0, "[]")
-                val arr = JSONArray(inner)
-                val f = Sniffer.foundFromUrls((0 until arr.length()).map { arr.getString(it) }, "page")
-                f.forEach { addFound(t, it) }
-            } catch (_: Exception) {}
-        }
     }
 
     // ---------- sheets ----------
@@ -343,7 +324,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSniffer() {
         val t = cur ?: return
-        scan(t)
         sheet { l, d ->
             val media = t.found.values.filter { it.kind != "SUB" }
             val subs = t.found.values.filter { it.kind == "SUB" }
@@ -394,17 +374,19 @@ class MainActivity : AppCompatActivity() {
             item(l, "History", null, { d.dismiss(); showList("History", store.history()) })
             item(l, "Desktop site: " + if (t.desktop) "on" else "off", null, {
                 d.dismiss(); t.desktop = !t.desktop
-                t.web.settings.userAgentString = if (t.desktop) desktopUa else mobileUa
-                t.web.reload()
+                t.session.settings.userAgentMode = if (t.desktop) GeckoSessionSettings.USER_AGENT_MODE_DESKTOP else GeckoSessionSettings.USER_AGENT_MODE_MOBILE
+                t.session.settings.viewportMode = if (t.desktop) GeckoSessionSettings.VIEWPORT_MODE_DESKTOP else GeckoSessionSettings.VIEWPORT_MODE_MOBILE
+                t.session.reload()
             })
-            item(l, "Ad & tracker blocking: " + if (store.adblock) "on" else "off", "Basic host blocklist", { d.dismiss(); store.adblock = !store.adblock; t.web.reload() })
+            item(l, "Tracking protection: strict (ads, trackers, fingerprinting, crypto-miners)", "Gecko Enhanced Tracking Protection + Global Privacy Control. Per-site exceptions are not built yet.", {})
+            item(l, "Install uBlock Origin (experimental)", "Downloads it from addons.mozilla.org and asks Gecko to install it", { d.dismiss(); Engine.installUblock(this) { msg -> Toast.makeText(this, msg, Toast.LENGTH_LONG).show() } })
             item(l, "Play a magnet link / torrent URL", null, { d.dismiss(); askMagnet() })
             item(l, "Share page", null, {
                 d.dismiss(); startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, t.url), "Share"))
             })
             item(l, "Downloads", null, { d.dismiss(); startActivity(Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)) })
             item(l, "Clear history & cookies", null, {
-                d.dismiss(); store.clearHistory(); CookieManager.getInstance().removeAllCookies(null); WebStorage.getInstance().deleteAllData()
+                d.dismiss(); store.clearHistory(); Engine.get(this).storageController.clearData(StorageController.ClearFlags.ALL)
                 Toast.makeText(this, "Cleared", Toast.LENGTH_SHORT).show()
             })
         }
@@ -455,10 +437,9 @@ class MainActivity : AppCompatActivity() {
             .putExtra("url", url)
             .putStringArrayListExtra("subs", ArrayList(subs))
             .putExtra("referer", referer)
-            .putExtra("ua", (tab ?: cur)?.web?.settings?.userAgentString ?: mobileUa)
+            .putExtra("ua", GeckoSession.getDefaultUserAgent())
         startActivity(i)
     }
 
-    override fun onPause() { super.onPause(); CookieManager.getInstance().flush() }
-    override fun onDestroy() { tabs.forEach { it.web.destroy() }; super.onDestroy() }
+    override fun onDestroy() { tabs.forEach { it.session.close() }; super.onDestroy() }
 }

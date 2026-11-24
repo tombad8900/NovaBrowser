@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, gecko]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -20,7 +20,7 @@ jobs:
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.7
+          gradle-version: 8.14.3
       - name: Extract libtorrent native library for JVM tests
         continue-on-error: true
         run: |
@@ -30,7 +30,7 @@ jobs:
       - name: Unit tests (sniffer + torrent streaming against a local seeder)
         id: tests
         continue-on-error: true
-        run: gradle --no-daemon :app:testDebugUnitTest
+        run: gradle --no-daemon :app:testX64DebugUnitTest
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -40,9 +40,10 @@ jobs:
             app/build/test-results
           if-no-files-found: ignore
       - name: Build debug APK
-        run: gradle --no-daemon :app:assembleDebug
+        run: gradle --no-daemon :app:assembleArm64Debug :app:assembleX64Debug
       - name: Name the APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk Nova-${{ github.ref_name }}.apk
+        run: cp app/build/outputs/apk/arm64/debug/app-arm64-debug.apk Nova-${{ github.ref_name }}-arm64.apk
+          cp app/build/outputs/apk/x64/debug/app-x64-debug.apk Nova-${{ github.ref_name }}-x86_64-emulator.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Nova-apk
