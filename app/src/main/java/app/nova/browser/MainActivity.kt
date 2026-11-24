@@ -64,7 +64,18 @@ class MainActivity : AppCompatActivity() {
     private val ui = Handler(Looper.getMainLooper())
     private lateinit var geckoView: GeckoView
     private var inFullscreen = false
-    private var loadingStarted = 0L
+    private var lastHeartbeat=0L
+    private var maxUiDelay=0L
+    private var heartbeats=0
+    private val heartbeat=object:Runnable {
+        override fun run(){
+            val now=android.os.SystemClock.elapsedRealtime()
+            if(lastHeartbeat>0)maxUiDelay=maxOf(maxUiDelay,(now-lastHeartbeat-500).coerceAtLeast(0))
+            lastHeartbeat=now
+            if(++heartbeats%20==0){android.util.Log.i("NovaPerf","UiHeartbeat maxDelayMs=$maxUiDelay tabs=${tabs.size}");maxUiDelay=0}
+            ui.postDelayed(this,500)
+        }
+    }
     private fun tr(en: String, ar: String) = if (resources.configuration.locales[0].language == "ar") ar else en
     private fun protection(t: Tab) {
         val host = Uri.parse(t.url).host ?: return
@@ -527,7 +538,7 @@ class MainActivity : AppCompatActivity() {
         startActivity(i)
     }
 
-    override fun onPause(){super.onPause();cur?.session?.setActive(false)}
-    override fun onResume(){super.onResume();cur?.session?.setActive(true)}
+    override fun onPause(){super.onPause();cur?.session?.setActive(false);ui.removeCallbacks(heartbeat);lastHeartbeat=0}
+    override fun onResume(){super.onResume();cur?.session?.setActive(true);ui.removeCallbacks(heartbeat);ui.post(heartbeat)}
     override fun onDestroy() { tabs.forEach { it.session.close() };store.close(); super.onDestroy() }
 }

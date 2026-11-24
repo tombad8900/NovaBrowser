@@ -59,6 +59,8 @@ jobs:
             adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/plain.html app.nova.browser
             sleep 8
             adb exec-out screencap -p > shots/6-plain.png
+            adb shell dumpsys meminfo app.nova.browser > shots/memory.txt
+            adb shell dumpsys gfxinfo app.nova.browser > shots/frames.txt
             adb logcat -d -s AndroidRuntime:E NovaEngine:I NovaPerf:I ExoPlayerImplInternal:E > shots/crashes.txt
       - uses: actions/upload-artifact@v4
         if: always()

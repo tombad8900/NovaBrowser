@@ -71,7 +71,7 @@ class PlayerActivity : AppCompatActivity() {
         top.addView(button("‹") {finish()}.apply{text="";setCompoundDrawablesWithIntrinsicBounds(R.drawable.nova_back,0,0,0);setPadding(dp(10),0,0,0)},LinearLayout.LayoutParams(dp(48),dp(44)))
         name=TextView(this).apply {text=session!!.title;setTextColor(white);textSize=15f;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END}
         top.addView(name,LinearLayout.LayoutParams(0,dp(44),1f))
-        top.addView(button("↻") { requestedOrientation=if(resources.configuration.orientation==2) ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE },LinearLayout.LayoutParams(dp(48),dp(44)))
+        top.addView(button("↻") { requestedOrientation=if(resources.configuration.orientation==2) ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE }.apply{text="";contentDescription="Rotate";setCompoundDrawablesWithIntrinsicBounds(R.drawable.nova_rotate,0,0,0);setPadding(dp(10),0,0,0)},LinearLayout.LayoutParams(dp(48),dp(44)))
         root.addView(top,FrameLayout.LayoutParams(-1,-2,Gravity.TOP))
         actions=LinearLayout(this).apply {gravity=Gravity.CENTER;setPadding(dp(6),dp(4),dp(6),dp(8));setBackgroundColor(0xE610101A.toInt())}
         val labels=listOf(tr("Sources","المصادر"),tr("Subtitles","الترجمات"),tr("Quality","الجودة"),tr("More","المزيد"))
@@ -80,7 +80,10 @@ class PlayerActivity : AppCompatActivity() {
         pv.setPadding(0,0,0,0)
         status=TextView(this).apply {setTextColor(white);textSize=16f;gravity=Gravity.CENTER;setPadding(dp(24),dp(20),dp(24),dp(20));setBackgroundColor(0xCC15141D.toInt());visibility=View.GONE}
         root.addView(status,FrameLayout.LayoutParams(-1,-2,Gravity.CENTER))
-        pv.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { v ->top.visibility=v;actions.visibility=v })
+        pv.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { v ->
+            top.visibility=v;actions.visibility=v
+            pv.subtitleView?.setBottomPaddingFraction(if(v==View.VISIBLE) {if(resources.configuration.orientation==2).34f else .24f} else .08f)
+        })
         setContentView(root)
         sourceIndex=savedInstanceState?.getInt("source")?:0
         play(sourceIndex,savedInstanceState?.getLong("position")?:0)

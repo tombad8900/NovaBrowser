@@ -6,14 +6,14 @@ def dump():
  adb('shell','uiautomator','dump','/sdcard/current.xml');return ET.fromstring(adb('shell','cat','/sdcard/current.xml'))
 def tap(label):
  for n in dump().iter():
-  if n.attrib.get('text','')==label:
+  if n.attrib.get('text','')==label or n.attrib.get('content-desc','')==label:
    b=list(map(int,re.findall(r'\d+',n.attrib['bounds'])));adb('shell','input','tap',str((b[0]+b[2])//2),str((b[1]+b[3])//2));return
  raise RuntimeError('Missing control '+label)
 def controls():
  adb('shell','input','tap','160','280');time.sleep(.2)
 def expect(text):
  if not any(text in n.attrib.get('text','') for n in dump().iter()):raise RuntimeError('Missing expected text '+text)
-tap('Play in Nova');time.sleep(2);adb('shell','input','tap','160','320');time.sleep(.5);shot('4-player');tap('Sources');time.sleep(.5);expect('Playback sources');shot('5-sources');tap('HLS · 10.0.2.2');time.sleep(3);adb('shell','input','tap','160','320');shot('5b-hls');tap('Subtitles');time.sleep(.5);expect('Arabic first');shot('6-subtitles');adb('shell','input','keyevent','KEYCODE_BACK');tap('Quality');time.sleep(.5);expect('Available quality');shot('7-quality');adb('shell','input','keyevent','KEYCODE_BACK');tap('↻');time.sleep(2);shot('8-landscape');adb('shell','input','keyevent','KEYCODE_BACK')
+tap('Play in Nova');time.sleep(2);adb('shell','input','tap','160','320');time.sleep(.5);shot('4-player');tap('Sources');time.sleep(.5);expect('Playback sources');shot('5-sources');tap('HLS · 10.0.2.2');time.sleep(3);adb('shell','input','tap','160','320');shot('5b-hls');tap('Subtitles');time.sleep(.5);expect('Arabic first');shot('6-subtitles');adb('shell','input','keyevent','KEYCODE_BACK');tap('Quality');time.sleep(.5);expect('Available quality');shot('7-quality');adb('shell','input','keyevent','KEYCODE_BACK');tap('Rotate');time.sleep(2);shot('8-landscape');adb('shell','input','keyevent','KEYCODE_BACK')
 
 log=adb('logcat','-d','-s','AndroidRuntime:E','ExoPlayerImplInternal:E').decode(errors='replace')
 open('shots/player-errors.txt','w').write(log)
