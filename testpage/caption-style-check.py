@@ -10,7 +10,7 @@ def launch():
   if re.search(r'(?:mResumedActivity:|topResumedActivity=).*PlayerActivity',activities):break
   time.sleep(1)
  else:raise RuntimeError('Caption source did not become ready')
- time.sleep(3);tap('الترجمات');tap('العربية');time.sleep(2)
+ time.sleep(4)
 launch();shot('30-caption-default');adb('shell','input','keyevent','KEYCODE_BACK')
 tap('القائمة');tap('الإعدادات');tap('التشغيل');tap('حجم الخط')
 # Native SeekBar receives keyboard input, not a hidden preference mutation.
