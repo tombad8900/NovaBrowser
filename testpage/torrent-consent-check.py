@@ -1,0 +1,10 @@
+import subprocess,time,xml.etree.ElementTree as E
+subprocess.check_call(['adb','shell','am','start','-a','android.intent.action.VIEW','-d','magnet:?xt=urn:btih:0123456789012345678901234567890123456789','app.nova.browser'])
+time.sleep(2)
+subprocess.check_call(['adb','shell','uiautomator','dump','/sdcard/consent.xml'])
+xml=subprocess.check_output(['adb','shell','cat','/sdcard/consent.xml']).decode()
+open('shots/consent.xml','w').write(xml)
+if 'Peers can see your IP address' not in xml:raise RuntimeError('Torrent disclosure missing')
+open('shots/16-torrent-consent.png','wb').write(subprocess.check_output(['adb','exec-out','screencap','-p']))
+subprocess.check_call(['adb','shell','input','keyevent','KEYCODE_BACK'])
+subprocess.check_call(['adb','shell','input','keyevent','KEYCODE_BACK'])

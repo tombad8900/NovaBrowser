@@ -32,6 +32,7 @@ class PlayerActivity : AppCompatActivity() {
     private var sessionId: String? = null
     private var sourceIndex = 0
     private var streamer: TorrentStreamer? = null
+    private var torrentConsent=false
     private var extraSubs = mutableListOf<PlaybackSource>()
     private var resize = 0
     private var speed = 1f
@@ -94,13 +95,13 @@ class PlayerActivity : AppCompatActivity() {
     private fun button(label:String,action:()->Unit)=TextView(this).apply {text=label;setTextColor(white);textSize=13f;typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL);gravity=Gravity.CENTER;contentDescription=label;setOnClickListener{action()};val a=obtainStyledAttributes(intArrayOf(android.R.attr.selectableItemBackground));background=a.getDrawable(0);a.recycle()}
     private fun sheet(title:String, rows:List<Pair<String,()->Unit>>) {
         val d:android.app.Dialog=if(resources.configuration.orientation==2) android.app.Dialog(this) else BottomSheetDialog(this)
-        val column=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;setPadding(dp(20),dp(14),dp(20),dp(24));setBackgroundColor(0xE6101018.toInt())}
-        column.addView(TextView(this).apply{text=title;setTextColor(white);textSize=18f;setPadding(0,dp(8),0,dp(18))})
+        val column=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(10),dp(16),dp(10));background=android.graphics.drawable.GradientDrawable().apply{setColor(0xD9101018.toInt());cornerRadius=dp(20).toFloat();setStroke(dp(1),0xFF35313F.toInt())}}
+        if(resources.configuration.orientation!=2)column.addView(TextView(this).apply{text=title;setTextColor(white);textSize=18f;setPadding(0,dp(8),0,dp(18))})
         rows.forEach{(label,action)->column.addView(TextView(this).apply{text=label;setTextColor(white);textSize=16f;setPadding(dp(8),dp(16),dp(8),dp(16));setOnClickListener{d.dismiss();action()}},LinearLayout.LayoutParams(-1,-2))}
         val handle=View(this).apply{background=android.graphics.drawable.GradientDrawable().apply{setColor(0xFF514A66.toInt());cornerRadius=dp(3).toFloat()}}
-        column.addView(handle,0,LinearLayout.LayoutParams(dp(34),dp(4)).apply{gravity=Gravity.CENTER_HORIZONTAL;bottomMargin=dp(14)})
+        if(resources.configuration.orientation!=2)column.addView(handle,0,LinearLayout.LayoutParams(dp(34),dp(4)).apply{gravity=Gravity.CENTER_HORIZONTAL;bottomMargin=dp(14)})
         d.setContentView(ScrollView(this).apply{addView(column)});d.show()
-        if(resources.configuration.orientation==2){d.window?.setBackgroundDrawableResource(android.R.color.transparent);d.window?.setGravity(Gravity.END or Gravity.CENTER_VERTICAL);d.window?.setLayout(minOf(dp(410),resources.displayMetrics.widthPixels-dp(80)),minOf(dp(240),resources.displayMetrics.heightPixels-dp(88)))}
+        if(resources.configuration.orientation==2){d.window?.setBackgroundDrawableResource(android.R.color.transparent);d.window?.setGravity(Gravity.END or Gravity.BOTTOM);d.window?.attributes=d.window?.attributes?.apply{y=dp(108);x=dp(16)};d.window?.setLayout(minOf(dp(330),resources.displayMetrics.widthPixels-dp(80)),minOf(dp(200),resources.displayMetrics.heightPixels-dp(124)))}
         d.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)?.background=android.graphics.drawable.GradientDrawable().apply{setColor(0xE6101018.toInt());cornerRadii=floatArrayOf(dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),0f,0f,0f,0f)}
     }
     private fun sources() {
@@ -188,6 +189,7 @@ class PlayerActivity : AppCompatActivity() {
     private fun play(index:Int,position:Long) {
         val ss=session?:return; val source=ss.sources.getOrNull(index)?:return;sourceIndex=index
         if(source.kind=="TORRENT") {
+            if(!torrentConsent){AlertDialog.Builder(this).setTitle(tr("Stream this torrent?","تشغيل هذا التورنت؟")).setMessage(tr("Peers can see your IP address. Nova downloads and shares pieces back at up to 64 KB/s while the player is open. Cached data is deleted on normal close. Only stream content you have the right to.","يمكن للمشاركين رؤية عنوان IP الخاص بك. ينزّل نوفا أجزاء الملف ويشاركها بسرعة رفع تصل إلى 64 كيلوبايت/ثانية أثناء فتح المشغل. تُحذف البيانات المؤقتة عند الإغلاق المعتاد. شغّل فقط محتوى لديك الحق في مشاهدته.")).setPositiveButton(tr("Stream","تشغيل")){_,_->torrentConsent=true;play(index,position)}.setNegativeButton(tr("Cancel","إلغاء")){_,_->if(player==null)finish()}.show();return}
             if(streamer!=null)return
             status.text=tr("Starting torrent…","جارٍ بدء التورنت…");status.visibility=View.VISIBLE
             streamer=TorrentStreamer(File(cacheDir,"torrent")).also{s->s.start(source.url,object:TorrentStreamer.Listener{
@@ -214,7 +216,7 @@ class PlayerActivity : AppCompatActivity() {
         p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setPreferredTextLanguage("ar").build()
         pv.player=p;player=p;p.setMediaItem(item.build(),position);p.setPlaybackSpeed(speed);p.prepare();p.playWhenReady=true
     }
-    private fun positionSubtitles(controls:Boolean){pv.subtitleView?.apply{setFixedTextSize(android.util.TypedValue.COMPLEX_UNIT_SP,20f);setApplyEmbeddedFontSizes(false);setStyle(androidx.media3.ui.CaptionStyleCompat(android.graphics.Color.WHITE,0x99000000.toInt(),android.graphics.Color.TRANSPARENT,androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_OUTLINE,android.graphics.Color.BLACK,null));setPadding(dp(12),0,dp(12),if(controls)dp(130) else dp(16));setBottomPaddingFraction(.04f)}}
+    private fun positionSubtitles(controls:Boolean){pv.subtitleView?.apply{setFixedTextSize(android.util.TypedValue.COMPLEX_UNIT_SP,20f);setApplyEmbeddedFontSizes(false);setStyle(androidx.media3.ui.CaptionStyleCompat(android.graphics.Color.WHITE,0x99000000.toInt(),android.graphics.Color.TRANSPARENT,androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_OUTLINE,android.graphics.Color.BLACK,null));setPadding(dp(12),0,dp(12),if(controls)dp(108) else dp(16));setBottomPaddingFraction(.04f)}}
     override fun onConfigurationChanged(config:android.content.res.Configuration){
         super.onConfigurationChanged(config)
         positionSubtitles(pv.isControllerFullyVisible)

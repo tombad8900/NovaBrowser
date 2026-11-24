@@ -529,13 +529,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openPlayer(url: String, subs: List<String>, referer: String, tab: Tab? = null) {
-        if (Sniffer.classify(url) == "TORRENT") {
-            AlertDialog.Builder(this).setTitle("Stream this torrent?")
-                .setMessage("Nova will connect to other peers to download it. Your IP address is visible to them, and pieces you have are shared back (upload is capped at 64 KB/s) only while the player is open. Everything is deleted when you close the player. Only stream content you have the right to.")
-                .setPositiveButton("Stream") { _, _ -> launchPlayer(url, subs, referer, tab) }
-                .setNegativeButton("Cancel", null).show()
-            return
-        }
         launchPlayer(url, subs, referer, tab)
     }
 

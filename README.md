@@ -14,16 +14,16 @@ The Gecko prototype was built in CI and tested on an Android 11 x86_64 emulator:
 
 ## Limits
 - No physical-device testing yet. Android 8+ is required. Choose the APK matching your device architecture.
-- uBlock Origin is not bundled or verified. No extension manager, cosmetic-filtering claim, per-site Shields controls or guarantee against anti-adblock detection. Some sites may break.
+- Nova installs Mozilla-signed uBlock Origin from AMO. Enabled status, active-page popup and a real page blocked-request counter were verified in an emulator. No guarantee against anti-adblock detection or broad compatibility. Some sites may break; use the separate uBlock and tracking-protection controls for exceptions.
 - Torrent streaming on Android remains unverified. An earlier native JVM test crashed before a teardown fix; later CI tests passed. Treat torrent playback as experimental.
-- Streams requiring cookies or page Referer/Origin headers may fail. Nova does not forward those browser credentials/context headers to the player.
+- Source-specific browser request context is passed in memory to the player, with expiry, origin/path scoping and redirect checks. Protected local Cookie/Referer HLS, MP4 and subtitle fixtures pass. Cross-origin segments or credentials not observed before handoff can still fail. This is not universal protected-provider support.
 - DRM, paywalls and authentication are not bypassed. Some blob-based players expose detectable underlying requests; others will not work. Not every codec/container is supported.
 - Downloads needing authenticated cookies may fail. Site camera/microphone/location/file-upload permission flows are not implemented.
 - No private tabs, session restore, reader mode, AI assistant, full Arabic UI, PiP or passkey testing yet. UI uses Android Views, storage uses SharedPreferences, not the brief's planned Compose/Room/DataStore stack.
 - Debug-signed APK for a trial. Do not use it for sensitive accounts yet. The brief remains the roadmap, not a completion checklist.
 
 ## Build
-JDK 17, Gradle 8.14.3, Android SDK 37, Kotlin 2.4.20 and AGP 8.11.1.
+JDK17, Gradle9.3.1, Android SDK37.0, built-in Kotlin with KGP2.4.21 and AGP9.1.1. AAR metadata checks are enabled.
 
 ```
 gradle :app:assembleArm64Debug :app:assembleX64Debug
