@@ -64,19 +64,20 @@ class PlayerActivity : AppCompatActivity() {
                 subtitles=intent.getStringArrayListExtra("subs").orEmpty().map{PlaybackSource(url=it,kind="SUB",mime=Sniffer.mimeForSub(it))},contexts=emptyList())
         }
         val root=FrameLayout(this).apply { setBackgroundColor(0xFF000000.toInt()) }
-        pv=PlayerView(this).apply { controllerShowTimeoutMs=3500; setShowSubtitleButton(false) }
+        pv=layoutInflater.inflate(R.layout.nova_player_view,root,false) as PlayerView
+        pv.apply {controllerShowTimeoutMs=8000;setShowSubtitleButton(false)}
         root.addView(pv,FrameLayout.LayoutParams(-1,-1))
-        val top=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; setPadding(dp(12),dp(16),dp(12),dp(8));setBackgroundColor(0x99000000.toInt()) }
+        val top=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; setPadding(dp(12),dp(16),dp(12),dp(8));background=android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(0xE610101A.toInt(),0x0010101A)) }
         top.addView(button("‹") {finish()},LinearLayout.LayoutParams(dp(48),dp(44)))
         name=TextView(this).apply {text=session!!.title;setTextColor(white);textSize=15f;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END}
         top.addView(name,LinearLayout.LayoutParams(0,dp(44),1f))
         top.addView(button("↻") { requestedOrientation=if(resources.configuration.orientation==2) ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE },LinearLayout.LayoutParams(dp(48),dp(44)))
         root.addView(top,FrameLayout.LayoutParams(-1,-2,Gravity.TOP))
-        actions=LinearLayout(this).apply {gravity=Gravity.CENTER;setPadding(dp(6),dp(4),dp(6),dp(8));setBackgroundColor(0xBB101018.toInt())}
+        actions=LinearLayout(this).apply {gravity=Gravity.CENTER;setPadding(dp(6),dp(4),dp(6),dp(8));setBackgroundColor(0xE610101A.toInt())}
         val labels=listOf(tr("Sources","المصادر"),tr("Subtitles","الترجمات"),tr("Quality","الجودة"),tr("More","المزيد"))
         listOf<()->Unit>({sources()},{subtitles()},{quality()},{more()}).forEachIndexed{i,f ->actions.addView(button(labels[i],f),LinearLayout.LayoutParams(0,dp(44),1f))}
         root.addView(actions,FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM))
-        pv.setPadding(0,dp(52),0,dp(60))
+        pv.setPadding(0,0,0,0)
         status=TextView(this).apply {setTextColor(white);textSize=16f;gravity=Gravity.CENTER;setPadding(dp(24),dp(20),dp(24),dp(20));setBackgroundColor(0xCC15141D.toInt());visibility=View.GONE}
         root.addView(status,FrameLayout.LayoutParams(-1,-2,Gravity.CENTER))
         pv.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { v ->top.visibility=v;actions.visibility=v })
@@ -84,12 +85,15 @@ class PlayerActivity : AppCompatActivity() {
         sourceIndex=savedInstanceState?.getInt("source")?:0
         play(sourceIndex,savedInstanceState?.getLong("position")?:0)
     }
-    private fun button(label:String,action:()->Unit)=TextView(this).apply {text=label;setTextColor(white);textSize=13f;gravity=Gravity.CENTER;setOnClickListener{action()}}
+    private fun button(label:String,action:()->Unit)=TextView(this).apply {text=label;setTextColor(white);textSize=13f;typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL);gravity=Gravity.CENTER;contentDescription=label;setOnClickListener{action()};val a=obtainStyledAttributes(intArrayOf(android.R.attr.selectableItemBackground));background=a.getDrawable(0);a.recycle()}
     private fun sheet(title:String, rows:List<Pair<String,()->Unit>>) {
         val d=BottomSheetDialog(this); val column=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;setPadding(dp(20),dp(14),dp(20),dp(24));setBackgroundColor(0xFF17161F.toInt())}
         column.addView(TextView(this).apply{text=title;setTextColor(accent);textSize=21f;setPadding(0,dp(8),0,dp(18))})
         rows.forEach{(label,action)->column.addView(TextView(this).apply{text=label;setTextColor(white);textSize=16f;setPadding(dp(8),dp(16),dp(8),dp(16));setOnClickListener{d.dismiss();action()}},LinearLayout.LayoutParams(-1,-2))}
+        val handle=View(this).apply{background=android.graphics.drawable.GradientDrawable().apply{setColor(0xFF514A66.toInt());cornerRadius=dp(3).toFloat()}}
+        column.addView(handle,0,LinearLayout.LayoutParams(dp(34),dp(4)).apply{gravity=Gravity.CENTER_HORIZONTAL;bottomMargin=dp(14)})
         d.setContentView(ScrollView(this).apply{addView(column)});d.show()
+        d.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)?.background=android.graphics.drawable.GradientDrawable().apply{setColor(0xFF17161F.toInt());cornerRadii=floatArrayOf(dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),0f,0f,0f,0f)}
     }
     private fun sources() {
         sheet(tr("Playback sources","مصادر التشغيل"),session!!.sources.mapIndexed{i,s ->
@@ -152,7 +156,7 @@ class PlayerActivity : AppCompatActivity() {
         player?.release()
         val contexts=(ss.contexts+ss.sources.map{it.context}+ss.subtitles.map{it.context})
         val factory=ScopedMediaHttp.factory(contexts,source.context)
-        val p=ExoPlayer.Builder(this).setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(this,factory))).build()
+        val p=ExoPlayer.Builder(this).setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(this,factory))).setSeekBackIncrementMs(10000).setSeekForwardIncrementMs(10000).build()
         val item=MediaItem.Builder().setUri(source.url)
         val mime=source.mime.takeIf{it.isNotBlank()}?:when(source.kind){"HLS"->MimeTypes.APPLICATION_M3U8;"DASH"->MimeTypes.APPLICATION_MPD;else->null}
         mime?.let{item.setMimeType(it)}

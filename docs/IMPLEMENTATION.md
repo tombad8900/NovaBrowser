@@ -42,3 +42,6 @@ User saw an unopened-session assertion while simply opening a website. The match
 - CI runs 45379664933 / 45379881704: unit tests + ARM64/x64 debug APK compile passed, before latest refinements.
 - Emulator 45380565457: actual protected MP4+subtitle displayed. Fixture requires Cookie and Referer. No fatal crash in captured log. Initial source/subtitle panel automation did not actually open panels, corrected test now asserts labels.
 - Local Nov24 14:12: eight tests pass (classifier, request scope/expiry, signed query preservation, path boundary rejection, real HTTP exact-source cookies, active-source segment fallback, redirect isolation, HTML rejection). Native torrent local test skipped unless native CI setup is present.
+
+## Visual references inspected
+Actual imagery, separate from source inspection: SkyStream OSD and volume panel in https://github.com/akashdh11/skystream/issues/103 (TV/controller UI, proposal screenshot); subtitle appearance in issue99. Zangetsu phone player in https://github.com/Spyou/Zangetsu/issues/128 (shows controls and subtitle bug, not proof of current release behavior). CloudStream phone player in https://github.com/recloudstream/cloudstream/pull/2474 . Nova uses its own lavender/ink palette, larger central playback action, clean timeline and dedicated panel strip. No images/assets or UI code from these references copied.
