@@ -25,12 +25,12 @@ results=[]
 for rtl in [0,1]:
  adb('shell','settings','put','global','debug.force_rtl',str(rtl))
  adb('shell','am','force-stop',pkg)
- adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/switch.html',pkg);time.sleep(6)
+ adb('shell','am','start','-a','android.intent.action.VIEW','-d','http://10.0.2.2:8000/switch.html','--ez','testHoldControls','true',pkg);time.sleep(6)
  tap('Play in Nova');time.sleep(4)
- adb('shell','input','keyevent','KEYCODE_MEDIA_PAUSE');time.sleep(.5)
  for orientation in ['portrait','landscape']:
   if orientation=='landscape':tap('Rotate');time.sleep(2)
   pause=find('exo_play_pause').attrib.get('content-desc','')
+  if 'Pause' in pause or 'إيقاف' in pause:tap('exo_play_pause')
   initial=seconds()
   target=bounds(find('exo_play_pause'));x=str((target[0]+target[2])//2);y=str((target[1]+target[3])//2)
   adb('shell','input','tap',x,y);time.sleep(2)

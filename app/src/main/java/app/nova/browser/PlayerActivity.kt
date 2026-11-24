@@ -40,6 +40,7 @@ class PlayerActivity : AppCompatActivity() {
     private var extraSubs = mutableListOf<PlaybackSource>()
     private var resize = 0
     private var speed = 1f
+    private val holdControlsForTest get()=(applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0 && intent.getBooleanExtra("testHoldControls",false)
     private val white = 0xFFF2F2F7.toInt()
     private val muted = 0xFFABAAB8.toInt()
     private val accent = 0xFFAB9FFF.toInt()
@@ -70,7 +71,7 @@ class PlayerActivity : AppCompatActivity() {
         }
         val root=FrameLayout(this).apply { setBackgroundColor(0xFF000000.toInt()) }
         pv=layoutInflater.inflate(R.layout.nova_player_view,root,false) as PlayerView
-        pv.apply {controllerShowTimeoutMs=6000;setShowSubtitleButton(false);setShowRewindButton(true);setShowFastForwardButton(true)}
+        pv.apply {controllerShowTimeoutMs=if(holdControlsForTest)0 else 6000;setShowSubtitleButton(false);setShowRewindButton(true);setShowFastForwardButton(true)}
         root.addView(pv,FrameLayout.LayoutParams(-1,-1))
         val top=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; setPadding(dp(12),dp(16),dp(12),dp(8));background=android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(0xE610101A.toInt(),0x0010101A)) }
         top.addView(button("‹") {finish()}.apply{text="";contentDescription=tr("Back","رجوع");setCompoundDrawablesWithIntrinsicBounds(R.drawable.nova_back,0,0,0);setPadding(dp(10),0,0,0)},LinearLayout.LayoutParams(dp(48),dp(44)))
@@ -242,7 +243,7 @@ class PlayerActivity : AppCompatActivity() {
         status.setOnClickListener(null)
         status.text=tr("Opening source…","جارٍ فتح المصدر…");status.visibility=View.VISIBLE
         p.addListener(object:Player.Listener {
-            override fun onIsPlayingChanged(playing:Boolean){pv.controllerShowTimeoutMs=if(playing)6000 else 0}
+            override fun onIsPlayingChanged(playing:Boolean){pv.controllerShowTimeoutMs=if(playing&&!holdControlsForTest)6000 else 0}
             override fun onPlaybackStateChanged(state:Int){if(state==Player.STATE_READY){status.visibility=View.GONE;android.util.Log.i("NovaPlayback","Ready kind=${source.kind} videoGroups=${p.currentTracks.groups.count{it.type==C.TRACK_TYPE_VIDEO}} audioGroups=${p.currentTracks.groups.count{it.type==C.TRACK_TYPE_AUDIO}}") }}
             override fun onPlayerError(e:PlaybackException){status.text=when(e.errorCode){PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS->tr("The server refused this request. Return to the page or choose another source.","رفض الخادم طلب التشغيل. ارجع للصفحة أو اختر مصدراً آخر.");PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED->tr("This response is not a valid stream. Choose another source or return to the page.","الاستجابة ليست بثاً صالحاً. اختر مصدراً آخر أو ارجع للصفحة.");else->tr("Couldn't play this source. Tap here to retry, or choose Sources.","تعذر تشغيل المصدر. اضغط هنا للمحاولة أو اختر المصادر.")};status.visibility=View.VISIBLE;status.setOnClickListener{play(sourceIndex,player?.currentPosition?:0)}}
         })

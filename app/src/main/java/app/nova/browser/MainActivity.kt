@@ -508,7 +508,7 @@ class MainActivity : AppCompatActivity() {
         t.media?.pause()
         PlaybackSessions.remove(t.playbackSessionId)
         val id=PlaybackSessions.put(ps);t.playbackSessionId=id
-        startActivity(Intent(this, PlayerActivity::class.java).putExtra("playbackSession",id))
+        startActivity(Intent(this, PlayerActivity::class.java).putExtra("playbackSession",id).putExtra("testHoldControls",intent.getBooleanExtra("testHoldControls",false)))
     }
 
     private fun copy(s: String) {
