@@ -23,6 +23,8 @@ class TorrentStreamer(private val dir: File) {
     /** Test hook: connect straight to a known peer (host, port). */
     var peerHint: kotlin.Pair<String, Int>? = null
     @Volatile private var stopped = false
+    private val active = java.util.concurrent.atomic.AtomicInteger(0)
+    private val pollers = java.util.concurrent.atomic.AtomicInteger(0)
     private var sm: SessionManager? = null
     private var server: ServerSocket? = null
     private var handle: TorrentHandle? = null
@@ -34,8 +36,10 @@ class TorrentStreamer(private val dir: File) {
     private val token = java.util.UUID.randomUUID().toString().replace("-", "")
     val streamPath get() = "/$token"
 
+    private var worker: Thread? = null
+
     fun start(src: String, l: Listener) {
-        Thread {
+        worker = Thread {
             try {
                 dir.deleteRecursively(); dir.mkdirs()
                 val s = SessionManager()
@@ -90,7 +94,7 @@ class TorrentStreamer(private val dir: File) {
             } catch (e: Throwable) {
                 if (!stopped) l.onError(e.message ?: e.javaClass.simpleName)
             }
-        }.start()
+        }.also { it.start() }
     }
 
     private fun report(l: Listener, t: String) { lastStatus = t; l.onStatus(t) }
@@ -114,7 +118,7 @@ class TorrentStreamer(private val dir: File) {
     private fun startServer() {
         val ss = ServerSocket(0, 8, InetAddress.getByName("127.0.0.1"))
         server = ss
-        Thread { while (!stopped) { try { val c = ss.accept(); Thread { serve(c) }.start() } catch (_: Exception) { break } } }.start()
+        Thread { while (!stopped) { try { val c = ss.accept(); Thread { active.incrementAndGet(); try { serve(c) } finally { active.decrementAndGet() } }.start() } catch (_: Exception) { break } } }.start()
     }
 
     private fun mime(): String = when (fileName.substringAfterLast('.', "").lowercase()) {
@@ -185,7 +189,12 @@ class TorrentStreamer(private val dir: File) {
     fun stop() {
         stopped = true
         try { server?.close() } catch (_: Exception) {}
-        try { sm?.stop() } catch (_: Exception) {}
-        Thread { try { Thread.sleep(1500); dir.deleteRecursively() } catch (_: Exception) {} }.start()
+        Thread {
+            // let in-flight readers and the status loop leave native code before the session is torn down
+            val end = System.currentTimeMillis() + 4000
+            while ((active.get() > 0 || worker?.isAlive == true) && System.currentTimeMillis() < end) { try { Thread.sleep(50) } catch (_: Exception) {} }
+            try { sm?.stop() } catch (_: Exception) {}
+            try { Thread.sleep(500); dir.deleteRecursively() } catch (_: Exception) {}
+        }.start()
     }
 }
