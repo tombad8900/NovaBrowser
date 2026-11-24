@@ -9,8 +9,8 @@ android {
         applicationId = "app.nova.browser.preview"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
-        versionName = "0.4.0-preview"
+        versionCode = 5
+        versionName = "0.4.1-preview"
     }
     flavorDimensions += "abi"
     productFlavors {

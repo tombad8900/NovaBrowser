@@ -269,7 +269,7 @@ class PlayerActivity : AppCompatActivity() {
         val captionPosition=IntArray(2);val toolsPosition=IntArray(2)
         subtitle.getLocationOnScreen(captionPosition);actions.getLocationOnScreen(toolsPosition)
         // Captions live inside the fitted video, not the entire player window.
-        // Reserve only the part of the bottom toolbar that actually intersects that video.
+        // Reserve the actual overlapping timeline and bottom tools, not a fixed window inset.
         val timeline=pv.findViewById<View>(androidx.media3.ui.R.id.exo_progress)
         val timelinePosition=IntArray(2)
         val controlsTop=if(timeline!=null && timeline.visibility==View.VISIBLE){timeline.getLocationOnScreen(timelinePosition);minOf(toolsPosition[1],timelinePosition[1])}else toolsPosition[1]

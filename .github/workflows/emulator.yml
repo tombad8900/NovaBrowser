@@ -7,6 +7,10 @@ on:
         description: Optional successful Build run to reuse its exact x64 APK without dependency downloads.
         required: false
         default: ''
+      upgrade_from:
+        description: Optional old Build run for a real in-place installation and data-retention check.
+        required: false
+        default: ''
       transport_only:
         description: Run only transport touch regression on the reused APK.
         required: false
@@ -69,6 +73,14 @@ jobs:
           cp reused-apk/*x86_64-emulator.apk app/build/outputs/apk/x64/debug/app-x64-debug.apk
           mkdir -p shots
           cp build-evidence.json shots/build-evidence.json
+      - name: Fetch previous package for upgrade check
+        if: inputs.upgrade_from != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OLD_BUILD: ${{ inputs.upgrade_from }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh run download "$OLD_BUILD" --repo "$REPO" --name Nova-apk --dir old-apk
       - name: Focused source, settings and transport tests
         if: inputs.transport_only == 'true'
         uses: reactivecircus/android-emulator-runner@v2
@@ -77,7 +89,17 @@ jobs:
           arch: x86_64
           target: google_apis
           script: |
+            if [ -d old-apk ]; then
+              adb install old-apk/*x86_64-emulator.apk
+              adb shell run-as app.nova.browser.preview sh -c 'echo nova-upgrade-retained > files-upgrade-marker'
+              adb shell dumpsys package app.nova.browser.preview | grep version > shots/upgrade-before.txt
+            fi
             adb install -r app/build/outputs/apk/x64/debug/app-x64-debug.apk
+            if [ -d old-apk ]; then
+              adb shell run-as app.nova.browser.preview cat files-upgrade-marker | grep nova-upgrade-retained
+              adb shell dumpsys package app.nova.browser.preview | grep version > shots/upgrade-after.txt
+              printf 'In-place install accepted and private data marker retained.\n' > shots/upgrade-result.txt
+            fi
             ffmpeg -loglevel error -f lavfi -i testsrc=duration=120:size=320x240:rate=15 -f lavfi -i sine=duration=120 -pix_fmt yuv420p -c:v libx264 -c:a aac testpage/clip.mp4
             (python3 testpage/server.py > /tmp/test-server.log 2>&1 &)
             sleep 2
