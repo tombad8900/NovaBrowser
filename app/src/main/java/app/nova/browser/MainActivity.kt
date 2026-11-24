@@ -430,14 +430,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSniffer() {
         val t = cur ?: return
-        val candidates = t.found.values.filter { it.kind != "SUB" && it.kind != "TORRENT" }
+        val candidates = t.found.values.filter { it.kind != "SUB" }
         if (candidates.isEmpty()) {
             Toast.makeText(this, tr("Start the video on the page, then tap Play in Nova","ابدأ الفيديو في الصفحة ثم اختر تشغيل في نوفا"), Toast.LENGTH_LONG).show()
             return
         }
         val all = t.found.values.map { f -> t.resources[sourceKey(f.url)] ?: PlaybackSource(url=f.url,kind=f.kind,language=t.subtitleHints[sourceKey(f.url)]?.first?:"und",label=t.subtitleHints[sourceKey(f.url)]?.second?:"") }
         val ps = PlaybackSession(title=t.title.ifBlank { "Nova" }, pageUrl=t.url,
-            sources=all.filter { it.kind != "SUB" && it.kind != "TORRENT" },
+            sources=all.filter { it.kind != "SUB" },
             subtitles=all.filter { it.kind == "SUB" }, contexts=t.contexts.values.toList())
         t.media?.pause()
         startActivity(Intent(this, PlayerActivity::class.java).putExtra("playbackSession",PlaybackSessions.put(ps)))
