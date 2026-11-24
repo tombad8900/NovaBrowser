@@ -136,8 +136,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun btn(label: String, onClick: () -> Unit): TextView = TextView(this).apply {
-        text = label; setTextColor(textColor); textSize = 17f; gravity = Gravity.CENTER
-        layoutParams = LinearLayout.LayoutParams(0, dp(46), 1f)
+        text = label; setTextColor(textColor); textSize = 12f; gravity = Gravity.CENTER
+        setLineSpacing(dp(3).toFloat(),1f);background=rounded(surface,12)
+        contentDescription=label.substringAfter('\n',label)
+        minHeight=dp(60);setPadding(dp(2),dp(6),dp(2),dp(6))
+        layoutParams = LinearLayout.LayoutParams(0, dp(60), 1f).apply{setMargins(dp(2),0,dp(2),0)}
         setOnClickListener { onClick() }
     }
 
@@ -167,17 +170,17 @@ class MainActivity : AppCompatActivity() {
         }
         val barWrap = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.parseColor("#14171D"))
-            setPadding(dp(10), dp(8), dp(10), dp(2))
+            setPadding(dp(8), dp(10), dp(8), dp(14))
         }
         barWrap.addView(urlBar)
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        tabBtn = btn("1") { showTabs() }
-        row.addView(btn("‹") { cur?.let { if (it.canBack) it.session.goBack() } })
-        row.addView(btn("›") { cur?.let { if (it.canFwd) it.session.goForward() } })
-        row.addView(btn("⟳") { cur?.session?.reload() })
-        row.addView(btn("◇") { cur?.let{protection(it)} })
+        tabBtn = btn("1\n"+tr("Tabs","التبويبات")) { showTabs() }
+        row.addView(btn("‹\n"+tr("Back","رجوع")) { cur?.let { if (it.canBack) it.session.goBack() } })
+        row.addView(btn("›\n"+tr("Next","التالي")) { cur?.let { if (it.canFwd) it.session.goForward() } })
+        row.addView(btn("⟳\n"+tr("Reload","تحديث")) { cur?.session?.reload() })
+        row.addView(btn("◇\n"+tr("Protect","الحماية")) { cur?.let{protection(it)} })
         row.addView(tabBtn)
-        row.addView(btn("⋮") { showMenu() })
+        row.addView(btn("⋮\n"+tr("Menu","القائمة")) { showMenu() })
         playAction=TextView(this).apply {
             text=tr("Play in Nova", "تشغيل في نوفا");setTextColor(accent);textSize=14f;gravity=Gravity.CENTER
             setPadding(0,dp(10),0,dp(10));setOnClickListener{showSniffer()}
@@ -189,10 +192,12 @@ class MainActivity : AppCompatActivity() {
         root.addView(col)
         fullscreenHost = FrameLayout(this).apply { visibility = View.GONE; setBackgroundColor(Color.BLACK) }
         root.addView(fullscreenHost, FrameLayout.LayoutParams(-1, -1))
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window,false)
+        window.navigationBarColor=Color.parseColor("#14171D")
         setContentView(root)
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
             val i = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars() or androidx.core.view.WindowInsetsCompat.Type.ime())
-            v.setPadding(0, i.top, 0, i.bottom); insets
+            v.setPadding(i.left, i.top, i.right, i.bottom); insets
         }
     }
 
@@ -410,7 +415,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshCounts() {
-        tabBtn.text = tabs.size.toString()
+        tabBtn.text = tabs.size.toString()+"\n"+tr("Tabs","التبويبات")
         val ready=cur?.found?.values?.any{it.kind!="SUB"}==true
         playAction.alpha=if(ready)1f else .5f
         playAction.background=if(ready)rounded(0xFF252035.toInt(),14) else null

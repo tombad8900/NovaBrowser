@@ -44,6 +44,12 @@ jobs:
             adb shell am start -a android.intent.action.VIEW -d https://example.com app.nova.browser.trial
             sleep 12
             adb exec-out screencap -p > shots/2-example.png
+            adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton || true
+            sleep 2
+            adb exec-out screencap -p > shots/2a-toolbar-threebutton.png
+            adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.gestural || true
+            sleep 2
+            adb exec-out screencap -p > shots/2b-toolbar-gesture.png
             adb shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml shots/ui.xml
             ffmpeg -loglevel error -f lavfi -i testsrc=duration=120:size=320x240:rate=15 -f lavfi -i sine=duration=120 -pix_fmt yuv420p -c:v libx264 -c:a aac testpage/clip.mp4
             mkdir -p testpage/hls
@@ -76,7 +82,7 @@ jobs:
             sleep 15
             adb exec-out screencap -p > shots/11-reported-site.png
             adb shell uiautomator dump /sdcard/site.xml && adb pull /sdcard/site.xml shots/site.xml
-            adb shell input tap $(python3 testpage/tap-label.py shots/site.xml '◇')
+            adb shell input tap $(python3 testpage/tap-label.py shots/site.xml 'Protect')
             sleep 2
             adb exec-out screencap -p > shots/12-protection.png
             adb shell uiautomator dump /sdcard/shield.xml && adb pull /sdcard/shield.xml shots/shield.xml
