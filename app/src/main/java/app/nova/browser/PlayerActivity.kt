@@ -94,8 +94,10 @@ class PlayerActivity : AppCompatActivity() {
             val show=if(isInPictureInPictureMode)View.GONE else v
             top.visibility=show;actions.visibility=show
             positionSubtitles(v==View.VISIBLE)
+            pv.post{positionSubtitles(v==View.VISIBLE)}
         })
         setContentView(root)
+        pv.addOnLayoutChangeListener{_,_,_,_,_,_,_,_,_->pv.post{positionSubtitles(pv.isControllerFullyVisible)}}
         positionSubtitles(true)
         sourceIndex=savedInstanceState?.getInt("source")?:0
         play(sourceIndex,savedInstanceState?.getLong("position")?:0)
@@ -259,7 +261,18 @@ class PlayerActivity : AppCompatActivity() {
         p.trackSelectionParameters=p.trackSelectionParameters.buildUpon().setPreferredTextLanguage("ar").build()
         pv.player=p;player=p;p.setMediaItem(item.build(),position);p.setPlaybackSpeed(speed);p.prepare();p.playWhenReady=true
     }
-    private fun positionSubtitles(controls:Boolean){pv.subtitleView?.apply{setFixedTextSize(android.util.TypedValue.COMPLEX_UNIT_SP,preferences.subtitleSize.toFloat());setApplyEmbeddedStyles(false);setApplyEmbeddedFontSizes(false);setStyle(androidx.media3.ui.CaptionStyleCompat(android.graphics.Color.WHITE,if(preferences.subtitleBackground)0x99000000.toInt() else android.graphics.Color.TRANSPARENT,android.graphics.Color.TRANSPARENT,androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_OUTLINE,android.graphics.Color.BLACK,android.graphics.Typeface.create(preferences.subtitleFont,0)));setPadding(dp(12),0,dp(12),dp(preferences.subtitleHeight));setBottomPaddingFraction(.04f)}}
+    private fun subtitleBottomInset(controls:Boolean):Int {
+        val user=dp(preferences.subtitleHeight)
+        if(!controls||!::actions.isInitialized||actions.visibility!=View.VISIBLE)return user
+        val subtitle=pv.subtitleView?:return user
+        if(subtitle.height==0||actions.height==0)return user
+        val captionPosition=IntArray(2);val toolsPosition=IntArray(2)
+        subtitle.getLocationOnScreen(captionPosition);actions.getLocationOnScreen(toolsPosition)
+        // Captions live inside the fitted video, not the entire player window.
+        // Reserve only the part of the bottom toolbar that actually intersects that video.
+        return maxOf(user,captionPosition[1]+subtitle.height-toolsPosition[1]+dp(12))
+    }
+    private fun positionSubtitles(controls:Boolean){pv.subtitleView?.apply{setFixedTextSize(android.util.TypedValue.COMPLEX_UNIT_SP,preferences.subtitleSize.toFloat());setApplyEmbeddedStyles(false);setApplyEmbeddedFontSizes(false);setStyle(androidx.media3.ui.CaptionStyleCompat(android.graphics.Color.WHITE,if(preferences.subtitleBackground)0x99000000.toInt() else android.graphics.Color.TRANSPARENT,android.graphics.Color.TRANSPARENT,androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_OUTLINE,android.graphics.Color.BLACK,android.graphics.Typeface.create(preferences.subtitleFont,0)));setPadding(dp(12),0,dp(12),subtitleBottomInset(controls));setBottomPaddingFraction(.04f)}}
     override fun onConfigurationChanged(config:android.content.res.Configuration){
         super.onConfigurationChanged(config)
         positionSubtitles(pv.isControllerFullyVisible)
