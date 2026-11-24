@@ -438,13 +438,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun showTabs() {
         sheet { l, d ->
-            title(l, "Tabs (${tabs.size})")
+            title(l, tr("Tabs (${tabs.size})","علامات التبويب (${tabs.size})"))
             tabs.toList().forEach { t ->
-                item(l, (if (t === cur) "● " else "") + t.title.ifBlank { t.url.ifBlank { "New tab" } }, t.url,
+                item(l, (if (t === cur) "● " else "") + t.title.ifBlank { t.url.ifBlank { tr("New tab","علامة تبويب جديدة") } }, t.url,
                     { d.dismiss(); switchTo(t) }, { d.dismiss(); closeTab(t) })
             }
-            item(l, "+ New tab", null, { d.dismiss(); newTab(null) })
-            item(l, "Long press a tab to close it", null, {})
+            item(l, tr("+ New tab","+ علامة تبويب جديدة"), null, { d.dismiss(); newTab(null) })
+            item(l, tr("Long press a tab to close it","اضغط مطولاً على علامة تبويب لإغلاقها"), null, {})
         }
     }
 
@@ -452,12 +452,12 @@ class MainActivity : AppCompatActivity() {
         val t = cur ?: return
         sheet { l, d ->
             val bm = store.isBookmarked(t.url)
-            item(l, "New tab", null, { d.dismiss(); newTab(null) })
-            item(l, if (bm) "Remove bookmark" else "Bookmark this page", null, {
+            item(l, tr("New tab","علامة تبويب جديدة"), null, { d.dismiss(); newTab(null) })
+            item(l, if (bm) tr("Remove bookmark","إزالة من المحفوظات") else tr("Bookmark this page","حفظ الصفحة"), null, {
                 d.dismiss(); if (t.url.startsWith("http")) { val on = store.toggleBookmark(t.title, t.url); Toast.makeText(this, if (on) "Bookmarked" else "Removed", Toast.LENGTH_SHORT).show() }
             })
-            item(l, "Bookmarks", null, { d.dismiss(); showList("Bookmarks", store.bookmarks()) })
-            item(l, "History", null, { d.dismiss(); showList("History", store.history()) })
+            item(l, tr("Bookmarks","المحفوظات"), null, { d.dismiss(); showList(tr("Bookmarks","المحفوظات"), store.bookmarks()) })
+            item(l, tr("History","السجل"), null, { d.dismiss(); showList(tr("History","السجل"), store.history()) })
             item(l, "Desktop site: " + if (t.desktop) "on" else "off", null, {
                 d.dismiss(); t.desktop = !t.desktop
                 t.session.settings.userAgentMode = if (t.desktop) GeckoSessionSettings.USER_AGENT_MODE_DESKTOP else GeckoSessionSettings.USER_AGENT_MODE_MOBILE
@@ -466,14 +466,13 @@ class MainActivity : AppCompatActivity() {
             })
             item(l, tr("Site protection", "حماية الموقع"), tr("Tracking, permissions and compatibility", "التتبع والأذونات والتوافق"), { d.dismiss(); protection(t) })
             item(l, tr("Settings", "الإعدادات"), null, { d.dismiss(); showSettings() })
-            item(l, "Play a magnet link / torrent URL", null, { d.dismiss(); askMagnet() })
-            item(l, "Share page", null, {
+            item(l, tr("Play a magnet link / torrent URL","تشغيل رابط مغناطيسي أو تورنت"), null, { d.dismiss(); askMagnet() })
+            item(l, tr("Share page","مشاركة الصفحة"), null, {
                 d.dismiss(); startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, t.url), "Share"))
             })
-            item(l, "Downloads", null, { d.dismiss(); startActivity(Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)) })
-            item(l, "Clear history & cookies", null, {
-                d.dismiss(); store.clearHistory(); Engine.get(this).storageController.clearData(StorageController.ClearFlags.ALL)
-                Toast.makeText(this, "Cleared", Toast.LENGTH_SHORT).show()
+            item(l, tr("Downloads","التنزيلات"), null, { d.dismiss(); startActivity(Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)) })
+            item(l, tr("Clear history & cookies","مسح السجل وملفات الارتباط"), null, {
+                d.dismiss();showSettings()
             })
         }
     }
@@ -488,7 +487,7 @@ class MainActivity : AppCompatActivity() {
     private fun showList(name: String, list: List<Store.Entry>) {
         sheet { l, d ->
             title(l, name)
-            if (list.isEmpty()) l.addView(TextView(this).apply { text = "Empty"; setTextColor(dim) })
+            if (list.isEmpty()) l.addView(TextView(this).apply { text = tr("Empty","لا يوجد محتوى"); setTextColor(dim) })
             list.take(150).forEach { e -> item(l, e.title, e.url, { d.dismiss(); load(e.url) }) }
         }
     }

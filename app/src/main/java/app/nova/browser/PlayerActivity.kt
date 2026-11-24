@@ -73,9 +73,9 @@ class PlayerActivity : AppCompatActivity() {
         top.addView(name,LinearLayout.LayoutParams(0,dp(44),1f))
         top.addView(button("↻") { requestedOrientation=if(resources.configuration.orientation==2) ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE }.apply{text="";contentDescription="Rotate";setCompoundDrawablesWithIntrinsicBounds(R.drawable.nova_rotate,0,0,0);setPadding(dp(10),0,0,0)},LinearLayout.LayoutParams(dp(48),dp(44)))
         root.addView(top,FrameLayout.LayoutParams(-1,-2,Gravity.TOP))
-        actions=LinearLayout(this).apply {gravity=Gravity.CENTER;setPadding(dp(6),dp(4),dp(6),dp(8));setBackgroundColor(0xE610101A.toInt())}
+        actions=LinearLayout(this).apply {gravity=Gravity.CENTER;setPadding(dp(62),dp(4),dp(8),dp(8));background=android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.BOTTOM_TOP,intArrayOf(0xD510101A.toInt(),0x0010101A))}
         val labels=listOf(tr("Sources","المصادر"),tr("Subtitles","الترجمات"),tr("Quality","الجودة"),tr("More","المزيد"))
-        listOf<()->Unit>({sources()},{subtitles()},{quality()},{more()}).forEachIndexed{i,f ->actions.addView(button(labels[i],f).apply {setCompoundDrawablesWithIntrinsicBounds(0,intArrayOf(R.drawable.nova_sources,R.drawable.nova_captions,R.drawable.nova_quality,R.drawable.nova_more)[i],0,0);compoundDrawablePadding=dp(5);textSize=11f;setPadding(0,dp(5),0,0)},LinearLayout.LayoutParams(0,dp(56),1f))}
+        listOf<()->Unit>({sources()},{subtitles()},{quality()},{more()}).forEachIndexed{i,f ->actions.addView(button(labels[i],f).apply {text="";setCompoundDrawablesWithIntrinsicBounds(intArrayOf(R.drawable.nova_sources,R.drawable.nova_captions,R.drawable.nova_quality,R.drawable.nova_more)[i],0,0,0);setPadding(dp(14),dp(10),dp(4),dp(10))},LinearLayout.LayoutParams(0,dp(48),1f))}
         root.addView(actions,FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM))
         pv.setPadding(0,0,0,0)
         status=TextView(this).apply {setTextColor(white);textSize=16f;gravity=Gravity.CENTER;setPadding(dp(24),dp(20),dp(24),dp(20));setBackgroundColor(0xCC15141D.toInt());visibility=View.GONE}
@@ -90,13 +90,15 @@ class PlayerActivity : AppCompatActivity() {
     }
     private fun button(label:String,action:()->Unit)=TextView(this).apply {text=label;setTextColor(white);textSize=13f;typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL);gravity=Gravity.CENTER;contentDescription=label;setOnClickListener{action()};val a=obtainStyledAttributes(intArrayOf(android.R.attr.selectableItemBackground));background=a.getDrawable(0);a.recycle()}
     private fun sheet(title:String, rows:List<Pair<String,()->Unit>>) {
-        val d=BottomSheetDialog(this); val column=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;setPadding(dp(20),dp(14),dp(20),dp(24));setBackgroundColor(0xFF17161F.toInt())}
+        val d:android.app.Dialog=if(resources.configuration.orientation==2) android.app.Dialog(this) else BottomSheetDialog(this)
+        val column=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;setPadding(dp(20),dp(14),dp(20),dp(24));setBackgroundColor(0xE6101018.toInt())}
         column.addView(TextView(this).apply{text=title;setTextColor(accent);textSize=21f;setPadding(0,dp(8),0,dp(18))})
         rows.forEach{(label,action)->column.addView(TextView(this).apply{text=label;setTextColor(white);textSize=16f;setPadding(dp(8),dp(16),dp(8),dp(16));setOnClickListener{d.dismiss();action()}},LinearLayout.LayoutParams(-1,-2))}
         val handle=View(this).apply{background=android.graphics.drawable.GradientDrawable().apply{setColor(0xFF514A66.toInt());cornerRadius=dp(3).toFloat()}}
         column.addView(handle,0,LinearLayout.LayoutParams(dp(34),dp(4)).apply{gravity=Gravity.CENTER_HORIZONTAL;bottomMargin=dp(14)})
         d.setContentView(ScrollView(this).apply{addView(column)});d.show()
-        d.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)?.background=android.graphics.drawable.GradientDrawable().apply{setColor(0xFF17161F.toInt());cornerRadii=floatArrayOf(dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),0f,0f,0f,0f)}
+        if(resources.configuration.orientation==2){d.window?.setBackgroundDrawableResource(android.R.color.transparent);d.window?.setGravity(Gravity.END or Gravity.CENTER_VERTICAL);d.window?.setLayout(minOf(dp(440),resources.displayMetrics.widthPixels-dp(80)),minOf(dp(300),resources.displayMetrics.heightPixels-dp(72)))}
+        d.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)?.background=android.graphics.drawable.GradientDrawable().apply{setColor(0xE6101018.toInt());cornerRadii=floatArrayOf(dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),dp(24).toFloat(),0f,0f,0f,0f)}
     }
     private fun sources() {
         sheet(tr("Playback sources","مصادر التشغيل"),session!!.sources.mapIndexed{i,s ->
