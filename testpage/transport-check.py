@@ -3,8 +3,11 @@ import subprocess,time,re,xml.etree.ElementTree as E,json
 pkg='app.nova.browser.preview'
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=30)
 def dump():
- adb('shell','rm','-f','/sdcard/transport.xml');adb('shell','uiautomator','dump','/sdcard/transport.xml')
- return E.fromstring(adb('shell','cat','/sdcard/transport.xml'))
+ for attempt in range(3):
+  adb('shell','rm','-f','/sdcard/transport.xml');out=adb('shell','uiautomator','dump','/sdcard/transport.xml')
+  if b'dumped to:' in out:return E.fromstring(adb('shell','cat','/sdcard/transport.xml'))
+  time.sleep(1)
+ shot('failed-ui-dump');raise RuntimeError('UI hierarchy unavailable after bounded retries')
 def tap(label):
  for n in dump().iter():
   if n.attrib.get('text')==label or n.attrib.get('content-desc')==label:
