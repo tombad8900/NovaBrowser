@@ -604,7 +604,7 @@ class MainActivity : AppCompatActivity() {
         title(l,tr("Subtitle appearance","مظهر الترجمة"))
         item(l,tr("Font size","حجم الخط"),store.subtitleSize.toString(),{d.dismiss();subtitleNumber(true)})
         item(l,tr("Height above bottom","الارتفاع عن أسفل الفيديو"),store.subtitleHeight.toString(),{d.dismiss();subtitleNumber(false)})
-        item(l,tr("Font","نوع الخط"),store.subtitleFont,{d.dismiss();AlertDialog.Builder(this).setTitle(tr("Font","نوع الخط")).setItems(arrayOf(tr("Default","افتراضي"),tr("Serif","ذو أطراف"),tr("Monospace","متساوي العرض"))){_,i->store.subtitleFont=arrayOf("sans-serif","serif","monospace")[i];playbackSettings()}.show()})
+        item(l,tr("Font","نوع الخط"),when(store.subtitleFont){"serif"->tr("Serif","ذو أطراف");"monospace"->tr("Monospace","متساوي العرض");else->tr("Default","افتراضي")},{d.dismiss();AlertDialog.Builder(this).setTitle(tr("Font","نوع الخط")).setItems(arrayOf(tr("Default","افتراضي"),tr("Serif","ذو أطراف"),tr("Monospace","متساوي العرض"))){_,i->store.subtitleFont=arrayOf("sans-serif","serif","monospace")[i];playbackSettings()}.show()})
         item(l,tr("Dark background","خلفية داكنة"),if(store.subtitleBackground)tr("On","مفعلة") else tr("Off","متوقفة"),{store.subtitleBackground=!store.subtitleBackground;d.dismiss();playbackSettings()})
         item(l,tr("Reset subtitle style","استعادة مظهر الترجمة الافتراضي"),null,{store.subtitleSize=20;store.subtitleHeight=16;store.subtitleFont="sans-serif";store.subtitleBackground=true;d.dismiss();playbackSettings()})
     }}
