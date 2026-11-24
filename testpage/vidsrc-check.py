@@ -7,7 +7,7 @@ def snap(label):
 def click(node):
  b=list(map(int,re.findall(r'\d+',node.attrib['bounds'])));adb('shell','input','tap',str((b[0]+b[2])//2),str((b[1]+b[3])//2))
 adb('shell','am','force-stop','app.nova.browser');adb('logcat','-c')
-adb('shell','am','start','-a','android.intent.action.VIEW','-d','https://vidsrc.sh/embed/movie/tt1300854','app.nova.browser');time.sleep(20)
+adb('shell','am','start','-a','android.intent.action.VIEW','-d','https://vidsrc.sh/embed/movie?tmdb=1368337','app.nova.browser');time.sleep(20)
 root=snap('24-vidsrc-page')
 played=False
 for n in root.iter():

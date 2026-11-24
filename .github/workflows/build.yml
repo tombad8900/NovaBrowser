@@ -45,7 +45,7 @@ jobs:
             app/build/test-results
           if-no-files-found: ignore
       - name: Build debug APK
-        run: gradle --no-daemon :app:assembleArm64Debug :app:assembleX64Debug
+        run: gradle --no-daemon --stacktrace :app:assembleArm64Debug :app:assembleX64Debug
       - name: Name the APK
         run: |
           find app/build/outputs/apk -name '*.apk'
