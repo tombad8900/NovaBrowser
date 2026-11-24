@@ -99,6 +99,14 @@ class PlayerActivity : AppCompatActivity() {
         positionSubtitles(true)
         sourceIndex=savedInstanceState?.getInt("source")?:0
         play(sourceIndex,savedInstanceState?.getLong("position")?:0)
+        if(holdControlsForTest)pv.post(object:Runnable{override fun run(){
+            if(isDestroyed||isFinishing)return
+            val data=org.json.JSONObject().put("position",player?.currentPosition?:0).put("playing",player?.isPlaying?:false).put("locale",resources.configuration.locales[0].language)
+            for((key,id) in listOf("back" to androidx.media3.ui.R.id.exo_rew,"play" to androidx.media3.ui.R.id.exo_play_pause,"forward" to androidx.media3.ui.R.id.exo_ffwd)){
+                pv.findViewById<View>(id)?.let{v->val b=android.graphics.Rect();v.getGlobalVisibleRect(b);data.put(key,org.json.JSONArray(listOf(b.left,b.top,b.right,b.bottom)))}
+            }
+            android.util.Log.i("NovaTouchTest",data.toString());pv.postDelayed(this,400)
+        }})
     }
     private fun button(label:String,action:()->Unit)=TextView(this).apply {text=label;setTextColor(white);textSize=13f;typeface=android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL);gravity=Gravity.CENTER;contentDescription=label;setOnClickListener{action()};val a=obtainStyledAttributes(intArrayOf(android.R.attr.selectableItemBackground));background=a.getDrawable(0);a.recycle()}
     private fun sheet(title:String, rows:List<Pair<String,()->Unit>>) {
