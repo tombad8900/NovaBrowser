@@ -50,11 +50,16 @@ jobs:
             sleep 3
             adb exec-out screencap -p > shots/4-sniffer-sheet.png
             adb shell uiautomator dump /sdcard/ui3.xml && adb pull /sdcard/ui3.xml shots/ui3.xml
-            XY=$(python3 -c "import re;s=open('shots/ui3.xml',encoding='utf-8').read();m=re.search(r'text=\"\\[VIDEO\\][^\"]*\"[^>]*bounds=\"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]',s);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print('')")
+            XY=$(python3 testpage/tap.py shots/ui3.xml)
             echo "tap target: $XY"
             [ -n "$XY" ] && adb shell input tap $XY
             sleep 10
             adb exec-out screencap -p > shots/5-player.png
+            adb shell input keyevent KEYCODE_BACK
+            sleep 2
+            adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/plain.html app.nova.browser
+            sleep 8
+            adb exec-out screencap -p > shots/6-plain.png
             adb logcat -d -s AndroidRuntime:E > shots/crashes.txt
       - uses: actions/upload-artifact@v4
         if: always()

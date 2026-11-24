@@ -171,7 +171,7 @@ class MainActivity : AppCompatActivity() {
     private fun newTab(url: String?, switchTo: Boolean = true): Tab {
         val web = WebView(this)
         val tab = Tab(web)
-        web.setBackgroundColor(bg)
+        web.setBackgroundColor(Color.WHITE) // pages without their own background must render like a normal browser
         if (android.os.Build.VERSION.SDK_INT >= 29) web.isForceDarkAllowed = false
         if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.FORCE_DARK))
             androidx.webkit.WebSettingsCompat.setForceDark(web.settings, androidx.webkit.WebSettingsCompat.FORCE_DARK_OFF)
