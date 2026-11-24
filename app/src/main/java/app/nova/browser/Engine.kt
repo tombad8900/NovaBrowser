@@ -45,6 +45,7 @@ object Engine {
             .build()
         val rt = GeckoRuntime.create(ctx.applicationContext, settings)
         runtime = rt
+        AdBlock.start(rt)
         rt.webExtensionController.ensureBuiltIn("resource://android/assets/nova-ext/", EXT_ID).accept({ e ->
             Log.i(TAG, "detector extension ready: ${e?.id}")
             if (e != null) {

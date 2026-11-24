@@ -69,6 +69,9 @@ class MainActivity : AppCompatActivity() {
         val host = Uri.parse(t.url).host ?: return
         sheet { l, d ->
             title(l, tr("Site protection", "حماية الموقع"))
+            item(l, "uBlock Origin · "+AdBlock.state, tr("Open ad filtering controls for this page", "فتح أدوات حجب الإعلانات لهذه الصفحة"), {
+                d.dismiss(); if(!AdBlock.show(t.session)) Toast.makeText(this,tr("Ad filter is starting. Try again shortly.","جارٍ بدء حجب الإعلانات. حاول بعد قليل."),Toast.LENGTH_LONG).show()
+            })
             item(l, host, null, {})
             item(l, if(store.protection(host)) tr("Protection is on", "الحماية مفعلة") else tr("Protection is off for this site", "الحماية متوقفة لهذا الموقع"),
                 tr("Tap to change and reload. Some sites need exceptions.", "اضغط للتغيير وإعادة التحميل. بعض المواقع تحتاج استثناءً."), {
@@ -322,6 +325,14 @@ class MainActivity : AppCompatActivity() {
         }
         s.promptDelegate = Prompts(this)
         if (!s.isOpen) s.open(Engine.get(this))
+        AdBlock.attach(s) { popup ->
+            val dialog=android.app.Dialog(this)
+            val view=GeckoView(this)
+            popup.open(Engine.get(this));view.setSession(popup)
+            dialog.setContentView(view);dialog.window?.setLayout(-1,dp(520))
+            dialog.setOnDismissListener{view.releaseSession();popup.close()};dialog.show()
+            dialog.window?.setLayout(-1,dp(520))
+        }
         tabs.add(tab)
         Engine.ext?.let { attachExt(tab, it) }
         if (switchTo) switchTo(tab)
