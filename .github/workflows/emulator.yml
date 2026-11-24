@@ -50,9 +50,7 @@ jobs:
             sleep 3
             adb exec-out screencap -p > shots/4-sniffer-sheet.png
             adb shell uiautomator dump /sdcard/ui3.xml && adb pull /sdcard/ui3.xml shots/ui3.xml
-            XY=$(python3 testpage/tap.py shots/ui3.xml)
-            echo "tap target: $XY"
-            [ -n "$XY" ] && adb shell input tap $XY
+            adb shell input tap $(python3 testpage/tap.py shots/ui3.xml)
             sleep 10
             adb exec-out screencap -p > shots/5-player.png
             adb shell input keyevent KEYCODE_BACK
