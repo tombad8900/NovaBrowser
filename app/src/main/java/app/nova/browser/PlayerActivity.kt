@@ -270,7 +270,10 @@ class PlayerActivity : AppCompatActivity() {
         subtitle.getLocationOnScreen(captionPosition);actions.getLocationOnScreen(toolsPosition)
         // Captions live inside the fitted video, not the entire player window.
         // Reserve only the part of the bottom toolbar that actually intersects that video.
-        return maxOf(user,captionPosition[1]+subtitle.height-toolsPosition[1]+dp(12))
+        val timeline=pv.findViewById<View>(androidx.media3.ui.R.id.exo_progress)
+        val timelinePosition=IntArray(2)
+        val controlsTop=if(timeline!=null && timeline.visibility==View.VISIBLE){timeline.getLocationOnScreen(timelinePosition);minOf(toolsPosition[1],timelinePosition[1])}else toolsPosition[1]
+        return maxOf(user,captionPosition[1]+subtitle.height-controlsTop+dp(12))
     }
     private fun positionSubtitles(controls:Boolean){pv.subtitleView?.apply{setFixedTextSize(android.util.TypedValue.COMPLEX_UNIT_SP,preferences.subtitleSize.toFloat());setApplyEmbeddedStyles(false);setApplyEmbeddedFontSizes(false);setStyle(androidx.media3.ui.CaptionStyleCompat(android.graphics.Color.WHITE,if(preferences.subtitleBackground)0x99000000.toInt() else android.graphics.Color.TRANSPARENT,android.graphics.Color.TRANSPARENT,androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_OUTLINE,android.graphics.Color.BLACK,android.graphics.Typeface.create(preferences.subtitleFont,0)));setPadding(dp(12),0,dp(12),subtitleBottomInset(controls));setBottomPaddingFraction(.04f)}}
     override fun onConfigurationChanged(config:android.content.res.Configuration){
