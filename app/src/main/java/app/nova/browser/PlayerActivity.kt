@@ -35,6 +35,7 @@ class PlayerActivity : AppCompatActivity() {
     private var torrentConsent=false
     private var playGeneration=0L
     private var torrentIndex:Int?=null
+    private var resolvedTorrent:PlaybackSource?=null
     private var extraSubs = mutableListOf<PlaybackSource>()
     private var resize = 0
     private var speed = 1f
@@ -189,23 +190,24 @@ class PlayerActivity : AppCompatActivity() {
         AlertDialog.Builder(this).setTitle(if(bright)tr("Brightness","السطوع")else tr("Volume","مستوى الصوت")).setView(slider).setPositiveButton("OK",null).show()
     }
     private fun play(index:Int,position:Long) {
-        val ss=session?:return; val source=ss.sources.getOrNull(index)?:return
+        val ss=session?:return; val original=ss.sources.getOrNull(index)?:return
+        val source=if(torrentIndex==index&&streamer!=null)resolvedTorrent?:original else original
         if(source.kind=="TORRENT") {
             if(!torrentConsent){AlertDialog.Builder(this).setTitle(tr("Stream this torrent?","تشغيل هذا التورنت؟")).setMessage(tr("Peers can see your IP address. Nova downloads and shares pieces back at up to 64 KB/s while the player is open. Cached data is deleted on normal close. Only stream content you have the right to.","يمكن للمشاركين رؤية عنوان IP الخاص بك. ينزّل نوفا أجزاء الملف ويشاركها بسرعة رفع تصل إلى 64 كيلوبايت/ثانية أثناء فتح المشغل. تُحذف البيانات المؤقتة عند الإغلاق المعتاد. شغّل فقط محتوى لديك الحق في مشاهدته.")).setPositiveButton(tr("Stream","تشغيل")){_,_->torrentConsent=true;play(index,position)}.setNegativeButton(tr("Cancel","إلغاء")){_,_->if(player==null)finish()}.show();return}
             if(streamer!=null && torrentIndex==index)return
             player?.release();player=null;pv.player=null
-            streamer?.stop();streamer=null;torrentIndex=index
+            streamer?.stop();streamer=null;resolvedTorrent=null;torrentIndex=index
             val generation=++playGeneration
             sourceIndex=index
             status.text=tr("Starting torrent…","جارٍ بدء التورنت…");status.visibility=View.VISIBLE
             streamer=TorrentStreamer(File(cacheDir,"torrent/"+java.util.UUID.randomUUID())).also{s->s.start(source.url,object:TorrentStreamer.Listener{
                 override fun onStatus(t:String){runOnUiThread{if(generation==playGeneration&&!isFinishing&&!isDestroyed)status.text=t}}
-                override fun onReady(url:String,name:String){runOnUiThread{if(generation!=playGeneration||isFinishing||isDestroyed)return@runOnUiThread;session=ss.copy(sources=ss.sources.mapIndexed{i,old->if(i==index)PlaybackSource(url=url,kind="VIDEO",label=name) else old});play(index,0)}}
-                override fun onError(e:String){runOnUiThread{if(generation!=playGeneration||isFinishing||isDestroyed)return@runOnUiThread;streamer?.stop();streamer=null;torrentIndex=null;status.text=tr("Torrent failed. Try another source.","تعذر تشغيل التورنت. جرّب مصدراً آخر.")}}
+                override fun onReady(url:String,name:String){runOnUiThread{if(generation!=playGeneration||isFinishing||isDestroyed)return@runOnUiThread;resolvedTorrent=PlaybackSource(url=url,kind="VIDEO",label=name);play(index,0)}}
+                override fun onError(e:String){runOnUiThread{if(generation!=playGeneration||isFinishing||isDestroyed)return@runOnUiThread;streamer?.stop();streamer=null;resolvedTorrent=null;torrentIndex=null;status.text=tr("Torrent failed. Try another source.","تعذر تشغيل التورنت. جرّب مصدراً آخر.")}}
             },fetchTorrent={u->ScopedMediaHttp.client(ss.contexts+ss.sources.map{it.context},source.context).newCall(okhttp3.Request.Builder().url(u).build()).execute().use{r->if(!r.isSuccessful)throw java.io.IOException("Torrent request refused");val input=r.body?.byteStream()?:throw java.io.IOException("Empty torrent");val bytes=readTorrentMetadata(input);require(bytes.size<=4*1024*1024){"Torrent metadata too large"};bytes}})};return
         }
         ++playGeneration
-        if(torrentIndex!=null && torrentIndex!=index){streamer?.stop();streamer=null;torrentIndex=null}
+        if(torrentIndex!=null && torrentIndex!=index){streamer?.stop();streamer=null;resolvedTorrent=null;torrentIndex=null}
         sourceIndex=index
         player?.release()
         val contexts=(ss.contexts+ss.sources.map{it.context}+ss.subtitles.map{it.context})
