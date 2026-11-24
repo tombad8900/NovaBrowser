@@ -172,6 +172,7 @@ class MainActivity : AppCompatActivity() {
         val web = WebView(this)
         val tab = Tab(web)
         web.setBackgroundColor(bg)
+        if (android.os.Build.VERSION.SDK_INT >= 29) web.isForceDarkAllowed = false
         web.settings.apply {
             javaScriptEnabled = true; domStorageEnabled = true; databaseEnabled = true
             mediaPlaybackRequiresUserGesture = false

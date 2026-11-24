@@ -36,6 +36,8 @@ jobs:
             sleep 12
             adb exec-out screencap -p > shots/2-example.png
             adb shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml shots/ui.xml
+            ffmpeg -loglevel error -f lavfi -i testsrc=duration=20:size=320x240:rate=15 -f lavfi -i sine=duration=20 -pix_fmt yuv420p -c:v libx264 -c:a aac testpage/clip.mp4
+            printf 'WEBVTT\n\n00:00:00.000 --> 00:00:20.000\nNOVA SUBTITLE OK\n' > testpage/en.vtt
             (cd testpage && python3 -m http.server 8000 >/dev/null 2>&1 &)
             sleep 2
             adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/test.html app.nova.browser
@@ -43,6 +45,15 @@ jobs:
             adb exec-out screencap -p > shots/3-detector-page.png
             adb shell uiautomator dump /sdcard/ui2.xml && adb pull /sdcard/ui2.xml shots/ui2.xml
             grep -o 'text="◉[^"]*"' shots/ui2.xml || true
+            adb shell input tap 190 612
+            sleep 3
+            adb exec-out screencap -p > shots/4-sniffer-sheet.png
+            adb shell uiautomator dump /sdcard/ui3.xml && adb pull /sdcard/ui3.xml shots/ui3.xml
+            XY=$(python3 -c "import re;s=open('shots/ui3.xml',encoding='utf-8').read();m=re.search(r'text=\"\\[VIDEO\\][^\"]*\"[^>]*bounds=\"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]',s);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print('')")
+            echo "tap target: $XY"
+            [ -n "$XY" ] && adb shell input tap $XY
+            sleep 10
+            adb exec-out screencap -p > shots/5-player.png
             adb logcat -d -s AndroidRuntime:E > shots/crashes.txt
       - uses: actions/upload-artifact@v4
         if: always()
