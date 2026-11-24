@@ -1,5 +1,5 @@
 // Request metadata is delivered directly to native code, never to page content scripts.
-const requests = new Map(), pending = new Map(), epochs = new Map();
+const requests = new Map(), pending = new Map(), epochs = new Map(), playlistDirs=new Map();
 const ext = /\.(m3u8|mpd|mp4|m4v|webm|mkv|mov|mp3|m4a|aac|ogg|opus|vtt|srt|ass|ssa|ttml|dfxp|torrent)(\?|#|$)/i;
 const mime = /^(video\/|audio\/|application\/(vnd\.apple\.mpegurl|x-mpegurl|dash\+xml|x-subrip)|text\/vtt)/i;
 const allowed = new Set(['user-agent','referer','origin','cookie','authorization','accept','accept-language','x-requested-with']);
@@ -23,7 +23,10 @@ browser.webRequest.onHeadersReceived.addListener(async d => {
   const rejected=/text\/html|application\/json/i.test(type)||d.statusCode>=400;
   if(rejected&&!ext.test(d.url))return;
   const isCandidate = mime.test(type) || ext.test(d.url);
-  const segment = /\.(ts|m4s|m4a|aac)(\?|#|$)/i.test(d.url);
+  const isPlaylist=/mpegurl|dash\+xml/i.test(type)||/\.(m3u8|mpd)(\?|#|$)/i.test(d.url);
+  if(isPlaylist&&!rejected){let dirs=playlistDirs.get(d.tabId)||new Set();dirs.add(d.url.split('?')[0].replace(/[^/]*$/,''));if(dirs.size>60)dirs.delete(dirs.values().next().value);playlistDirs.set(d.tabId,dirs);}
+  const fromPlaylist=[...(playlistDirs.get(d.tabId)||[])].some(dir=>d.url.startsWith(dir));
+  const segment = /\.(ts|m4s)(\?|#|$)/i.test(d.url)||(/\.(m4a|aac)(\?|#|$)/i.test(d.url)&&fromPlaylist);
   if (!isCandidate && !rejected && d.type !== 'media' && !segment) return;
   const token = Date.now().toString(36) + '-' + (++serial);
   const observation = {t:'resource',token,url:d.url,ct:type,segment,rejected,headers:r.headers,time:r.time};
@@ -35,6 +38,6 @@ browser.webRequest.onHeadersReceived.addListener(async d => {
 }, {urls:['<all_urls>']}, ['responseHeaders']);
 browser.webRequest.onCompleted.addListener(d=>requests.delete(d.requestId),{urls:['<all_urls>']});
 browser.webRequest.onErrorOccurred.addListener(d=>requests.delete(d.requestId),{urls:['<all_urls>']});
-browser.webRequest.onBeforeRequest.addListener(d=>{if(d.type==='main_frame'){pending.delete(d.tabId);epochs.set(d.tabId,(epochs.get(d.tabId)||0)+1);}},{urls:['<all_urls>']});
-browser.tabs.onRemoved.addListener(id=>{pending.delete(id);epochs.delete(id);});
+browser.webRequest.onBeforeRequest.addListener(d=>{if(d.type==='main_frame'){pending.delete(d.tabId);playlistDirs.delete(d.tabId);epochs.set(d.tabId,(epochs.get(d.tabId)||0)+1);}},{urls:['<all_urls>']});
+browser.tabs.onRemoved.addListener(id=>{pending.delete(id);epochs.delete(id);playlistDirs.delete(id);});
 browser.runtime.onMessage.addListener((m,s)=>{if(m && m.nova==='hello' && s.tab) return Promise.resolve({epoch:epochs.get(s.tab.id)||0,items:pending.get(s.tab.id)||[]});});

@@ -15,6 +15,12 @@ async function test(){
  listeners.send({...base,requestId:'seg',url:'https://cdn.test/show/a.ts'});
  await listeners.response({...base,requestId:'seg',url:'https://cdn.test/show/a.ts',responseHeaders:[{name:'Content-Type',value:'video/mp2t'}]});
  assert.equal(native[2].segment,true);
+ listeners.send({...base,requestId:'audio',url:'https://cdn.test/music/song.m4a'});
+ await listeners.response({...base,requestId:'audio',url:'https://cdn.test/music/song.m4a',responseHeaders:[{name:'Content-Type',value:'audio/mp4'}]});
+ assert.equal(native[3].segment,false);
+ listeners.send({...base,requestId:'audioseg',url:'https://cdn.test/show/chunk.m4a'});
+ await listeners.response({...base,requestId:'audioseg',url:'https://cdn.test/show/chunk.m4a',responseHeaders:[{name:'Content-Type',value:'audio/mp4'}]});
+ assert.equal(native[4].segment,true);
  const prior=forwarded.length;
  listeners.send({...base,requestId:'stale'});listeners.before({...base,type:'main_frame'});
  await listeners.response({...base,requestId:'stale',responseHeaders:[{name:'Content-Type',value:'video/mp4'}]});
