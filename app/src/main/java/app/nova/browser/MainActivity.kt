@@ -35,6 +35,7 @@ class MainActivity : AppCompatActivity() {
     class Tab(val session: GeckoSession) {
         val found = LinkedHashMap<String, Found>()
         val rejected=linkedSetOf<String>()
+        val subtitleHints=LinkedHashMap<String,Pair<String,String>>()
         val resources = LinkedHashMap<String, PlaybackSource>()
         val contexts = LinkedHashMap<String, RequestContext>()
         var title = ""
@@ -234,7 +235,8 @@ class MainActivity : AppCompatActivity() {
                             tab.contexts[sourceKey(u)] = context
                             if (kind == "CONTEXT") return@post
                             val arabic = Regex("(?i)([/_.?&=-])(ar|ara|arabic)([/_.?&=-]|$)").containsMatchIn(u)
-                            val source = PlaybackSource(url=u,kind=kind,mime=ct,context=context,evidence="network",language=if(arabic)"ar" else "und",label=if(arabic)"العربية" else "")
+                            val hint=tab.subtitleHints[sourceKey(u)]
+                            val source = PlaybackSource(url=u,kind=kind,mime=ct,context=context,evidence="network",language=hint?.first?:if(arabic)"ar" else "und",label=hint?.second?:if(arabic)"العربية" else "")
                             tab.resources[sourceKey(u)] = source
                             addFound(tab, Found(u, kind, "network"))
                         }
@@ -249,7 +251,12 @@ class MainActivity : AppCompatActivity() {
                         val arr = message.optJSONArray("urls")
                         if (arr != null) {
                             val f = Sniffer.foundFromUrls((0 until arr.length()).map { arr.getString(it) }, "page")
-                            ui.post { if(generation==tab.generation) f.forEach { addFound(tab, it) } }
+                            val tracks=message.optJSONArray("tracks")
+                            val hints=(0 until (tracks?.length()?:0)).mapNotNull{i->tracks?.optJSONObject(i)?.let{o->Triple(o.optString("url"),o.optString("language","und"),o.optString("label"))}}
+                            ui.post { if(generation==tab.generation) {
+                                hints.forEach{(u,lang,label)->if(u.startsWith("http")){val key=sourceKey(u);tab.subtitleHints[key]=lang to label;tab.resources[key]?.let{tab.resources[key]=it.copy(language=lang,label=label)}}}
+                                f.forEach { addFound(tab, it) }
+                            }}
                         }
                     }
                 }
@@ -274,7 +281,7 @@ class MainActivity : AppCompatActivity() {
             override fun onPageStart(session: GeckoSession, u: String) {
                 tab.loadStarted = android.os.SystemClock.elapsedRealtime()
                 tab.generation++
-                tab.found.clear(); tab.resources.clear(); tab.contexts.clear();tab.rejected.clear(); tab.url = u
+                tab.found.clear(); tab.resources.clear(); tab.contexts.clear();tab.rejected.clear();tab.subtitleHints.clear(); tab.url = u
                 if (cur === tab) { refreshCounts(); if (!urlBar.hasFocus()) urlBar.setText(shown(u)) }
             }
             override fun onPageStop(session: GeckoSession, success: Boolean) {
@@ -427,7 +434,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, tr("Start the video on the page, then tap Play in Nova","ابدأ الفيديو في الصفحة ثم اختر تشغيل في نوفا"), Toast.LENGTH_LONG).show()
             return
         }
-        val all = t.found.values.map { f -> t.resources[sourceKey(f.url)] ?: PlaybackSource(url=f.url,kind=f.kind) }
+        val all = t.found.values.map { f -> t.resources[sourceKey(f.url)] ?: PlaybackSource(url=f.url,kind=f.kind,language=t.subtitleHints[sourceKey(f.url)]?.first?:"und",label=t.subtitleHints[sourceKey(f.url)]?.second?:"") }
         val ps = PlaybackSession(title=t.title.ifBlank { "Nova" }, pageUrl=t.url,
             sources=all.filter { it.kind != "SUB" && it.kind != "TORRENT" },
             subtitles=all.filter { it.kind == "SUB" }, contexts=t.contexts.values.toList())

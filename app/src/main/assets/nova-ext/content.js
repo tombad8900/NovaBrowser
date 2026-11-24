@@ -23,7 +23,9 @@ function scan() {
       mediaPattern.lastIndex=0;let m,n=0;
       while((m=mediaPattern.exec(h))&&n++<150)add(m[0]);
     }
-    if(out.length)send({t:'scan',urls:out,page:location.href});
+    const tracks=[];
+    document.querySelectorAll('track[src]').forEach(e=>{if(tracks.length<60)tracks.push({url:e.src,language:e.srclang||'und',label:e.label||''});});
+    if(out.length||tracks.length)send({t:'scan',urls:out,tracks,page:location.href});
     if(sent.size>600)sent.clear();
   }catch(_){}
 }
