@@ -25,6 +25,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.14.3
+      - name: Detector protocol tests
+        run: node tests/detector.test.cjs
       - name: Extract libtorrent native library for JVM tests
         continue-on-error: true
         run: |

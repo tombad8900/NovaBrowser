@@ -15,7 +15,7 @@ function record(d) {
 }
 browser.webRequest.onSendHeaders.addListener(record, {urls:['<all_urls>']}, ['requestHeaders']);
 browser.webRequest.onHeadersReceived.addListener(async d => {
-  if (d.tabId < 0 || d.type === 'main_frame' || d.statusCode < 200) return;
+  if (d.tabId < 0 || d.type === 'main_frame' || d.statusCode < 200 || (d.statusCode>=300 && d.statusCode<400)) return;
   const r = requests.get(d.requestId) || {url:d.url,headers:{},time:Date.now()};
   const ct = (d.responseHeaders || []).find(h => h.name.toLowerCase() === 'content-type');
   const type = ct ? ct.value.split(';')[0].trim() : '';
