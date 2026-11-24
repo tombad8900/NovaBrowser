@@ -45,26 +45,11 @@ jobs:
             sleep 15
             adb exec-out screencap -p > shots/3-detector-page.png
             adb shell uiautomator dump /sdcard/ui2.xml && adb pull /sdcard/ui2.xml shots/ui2.xml
-            adb shell input tap $(python3 testpage/tap-label.py shots/ui2.xml 'Play in Nova')
-            sleep 8
-            adb exec-out screencap -p > shots/4-player.png
-            adb shell uiautomator dump /sdcard/player.xml && adb pull /sdcard/player.xml shots/player.xml
-            adb shell input tap 160 280
-            adb shell input tap $(python3 testpage/tap-label.py shots/player.xml Sources)
-            sleep 2
-            adb exec-out screencap -p > shots/5-sources.png
-            adb shell input keyevent KEYCODE_BACK
-            adb shell input tap 160 280
-            adb shell uiautomator dump /sdcard/ctrl.xml && adb pull /sdcard/ctrl.xml shots/ctrl.xml
-            adb shell input tap $(python3 testpage/tap-label.py shots/ctrl.xml Subtitles)
-            sleep 2
-            adb exec-out screencap -p > shots/6-subtitles.png
-            adb shell input keyevent KEYCODE_BACK
-            sleep 2
+            python3 testpage/emulator-check.py
             adb shell am start -a android.intent.action.VIEW -d http://10.0.2.2:8000/plain.html app.nova.browser
             sleep 8
             adb exec-out screencap -p > shots/6-plain.png
-            adb logcat -d -s AndroidRuntime:E NovaEngine:I NovaPerf:I > shots/crashes.txt
+            adb logcat -d -s AndroidRuntime:E NovaEngine:I NovaPerf:I ExoPlayerImplInternal:E > shots/crashes.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
