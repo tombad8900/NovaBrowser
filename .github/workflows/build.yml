@@ -22,10 +22,10 @@ jobs:
         with:
           gradle-version: 8.7
       - name: Extract libtorrent native library for JVM tests
+        continue-on-error: true
         run: |
-          J=$(find ~/.gradle -name 'libtorrent4j-linux-*.jar' 2>/dev/null | head -1)
-          if [ -z "$J" ]; then gradle --no-daemon -q :app:dependencies --configuration debugUnitTestRuntimeClasspath >/dev/null || true; J=$(find ~/.gradle -name 'libtorrent4j-linux-*.jar' | head -1); fi
-          mkdir -p $HOME/nl && unzip -oq "$J" 'lib/x86_64/*' -d $HOME/nl
+          curl -sfL -o lt.jar https://repo.maven.apache.org/maven2/org/libtorrent4j/libtorrent4j-linux/2.1.0-39/libtorrent4j-linux-2.1.0-39.jar
+          mkdir -p $HOME/nl && unzip -oq lt.jar 'lib/x86_64/*' -d $HOME/nl
           echo "NOVA_NATIVE_DIR=$HOME/nl/lib/x86_64" >> $GITHUB_ENV
       - name: Unit tests (sniffer + torrent streaming against a local seeder)
         id: tests
