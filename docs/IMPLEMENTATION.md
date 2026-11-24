@@ -63,3 +63,6 @@ Emulator45391422598: actual protected HLS->MP4->HLS playback; real240p/144p qual
 
 ## Toolchain migration
 Removed the disabled-AAR-metadata workaround. AGP9.1.1, Gradle9.3.1, compileSdk37.0 using the supported DSL; built-in Kotlin with explicit KGP2.4.21 runtime override to match current transitive Kotlin metadata. Local metadata check,9 JVM/HTTP tests and full x64 assembly pass. Native torrent test still requires its native library. Official references: https://developer.android.com/build/releases/agp-9-1-0-release-notes , https://developer.android.com/build/migrate-to-built-in-kotlin , https://developer.android.com/build/releases/agp-9-0-0-release-notes . CI runtime verification follows.
+
+## Verified Nov24 16:14
+Full emulator45399668570 and build45399669488 pass: protected HLS/MP4/subtitles, real rendition selection, delayed iframe source playback with visible video, popup regression and real uBlock controls, torrent peer-disclosure/cancel gate. Physical device and arbitrary providers remain unverified. Entire-process PSS around805MiB at eight-tab stress state; main-only354MiB was not total memory. Jank20.1%, max observed main heartbeat247ms late. No performance-solved claim. Added content-process crash/kill recovery using Gecko-provided in-memory state; full test currently being corrected/verified, not a session-persistence feature.

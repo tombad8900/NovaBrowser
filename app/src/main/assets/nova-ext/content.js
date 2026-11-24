@@ -8,6 +8,8 @@ browser.runtime.sendMessage({nova:'hello'}).then(result=>{epoch=result.epoch;if(
 const mediaPattern=/https?:\/\/[^\s"'<>\\)]+\.(?:m3u8|mpd|mp4|webm|mkv|vtt|srt|ass|ttml)(?:\?[^\s"'<>\\)]*)?/gi;
 let timer=0;
 const sent=new Set();
+const scannedScripts=new WeakMap();
+let lastTracks='';
 function scan() {
   timer=0;
   try {
@@ -19,13 +21,17 @@ function scan() {
     let budget=200000;
     const scripts=document.scripts;
     for(let i=0;i<Math.min(scripts.length,50)&&budget>0;i++) {
-      let h=(scripts[i].textContent||'').slice(0,budget).replace(/\\\//g,'/').replace(/&amp;/g,'&');budget-=h.length;
+      const raw=(scripts[i].textContent||'').slice(0,budget);budget-=raw.length;
+      if(scannedScripts.get(scripts[i])===raw)continue;
+      scannedScripts.set(scripts[i],raw);
+      let h=raw.replace(/\\\//g,'/').replace(/&amp;/g,'&');
       mediaPattern.lastIndex=0;let m,n=0;
       while((m=mediaPattern.exec(h))&&n++<150)add(m[0]);
     }
     const tracks=[];
     document.querySelectorAll('track[src]').forEach(e=>{if(tracks.length<60)tracks.push({url:e.src,language:e.srclang||'und',label:e.label||''});});
-    if(out.length||tracks.length)send({t:'scan',urls:out,tracks,page:location.href});
+    const signature=JSON.stringify(tracks);
+    if(out.length||signature!==lastTracks){lastTracks=signature;send({t:'scan',urls:out,tracks,page:location.href});}
     if(sent.size>600)sent.clear();
   }catch(_){}
 }
